@@ -1,0 +1,29 @@
+name: road_anomaly_detector
+channels:
+  - defaults
+  - conda-forge
+  - pytorch
+
+dependencies:
+  - python>=3.10  # Specifying Python version 3.10 or later to allow for flexibility
+  - pip
+  
+  # PyTorch latest stable CPU version
+  - pytorch
+  - torchvision
+  - torchaudio
+
+  # Additional dependencies
+  - numpy
+  - opencv
+  
+  - pip:
+    - black
+    - pypylon
+    - flake8
+    - isort
+    - -e .
+
+
+  
+  
