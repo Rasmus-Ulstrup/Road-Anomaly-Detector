@@ -12,11 +12,13 @@
    cd Road-Anomaly-Detector
 2. **Create a conda environment**:
     ```bash
-    conda create --name road_anomaly python=3.9
-    conda activate road_anomaly
-3. **Install the required dependencies**:
+    conda env create -f environment.yml
+3. **Activate the enviroment**:
     ```bash
-    conda install --file requirements.txt
+    conda activate road_anomaly_detector
+4. **Download and install pylon**:
+   ```bash
+   https://www2.baslerweb.com/en/downloads/software-downloads/software-pylon-7-5-0-windows/
 
 ## License
 This project is licensed under the MIT License.
