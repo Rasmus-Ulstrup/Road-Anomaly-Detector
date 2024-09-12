@@ -2,10 +2,10 @@ import pypylon.pylon as py
 import numpy as np
 import cv2
 
-# This sample has been adapted to work with a GigE camera
+# This sample has been adapted to work with a monochrome GigE camera
 
 # Constants
-SCANLINE_HEIGHT = 2
+SCANLINE_HEIGHT = 1
 VIRTUAL_FRAME_HEIGHT = 1000
 
 # Initialize GigE camera
@@ -24,17 +24,19 @@ else:
 cam.Open()
 cam.Height = SCANLINE_HEIGHT
 cam.Width = cam.Width.Max
-cam.CenterX = True
-cam.CenterY = True
-cam.PixelFormat = "BGR8"
-cam.Gain = 20
+#cam.CenterX = True
+#cam.CenterY = True
+cam.PixelFormat = "Mono8"  # Set to monochrome format
+cam.Gain = 1
 cam.ExposureTime = 900
 
 # Start grabbing
 cam.StartGrabbing()
 
-img = np.ones((VIRTUAL_FRAME_HEIGHT, cam.Width.Value, 3), dtype=np.uint8)
-missing_line = np.ones((SCANLINE_HEIGHT, cam.Width.Value, 3), dtype=np.uint8) * 255
+# Create a 2D image array for the monochrome camera
+img = np.ones((VIRTUAL_FRAME_HEIGHT, cam.Width.Value), dtype=np.uint8)
+# Create a missing line placeholder (also 2D)
+missing_line = np.ones((SCANLINE_HEIGHT, cam.Width.Value), dtype=np.uint8) * 255
 image_idx = 0
 
 while True:
@@ -47,10 +49,8 @@ while True:
                 img[idx * SCANLINE_HEIGHT:idx * SCANLINE_HEIGHT + SCANLINE_HEIGHT] = missing_line
                 print(idx)
 
-    img_rgb = img
-
-    # Display the resulting frame
-    cv2.imshow('Linescan View', img_rgb)
+    # Display the resulting frame (no conversion needed for monochrome)
+    cv2.imshow('Linescan View', img)
 
     image_idx += 1
     if cv2.waitKey(1) & 0xFF in (ord('q'), 27):
