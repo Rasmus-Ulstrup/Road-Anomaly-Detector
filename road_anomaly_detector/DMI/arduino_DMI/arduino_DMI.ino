@@ -10,7 +10,7 @@ const int lineRatePin = 8;  // 8
 #define PI 3.14159265359
 
 // Camera constants:
-#define SPATIAL_RESOLUTION_MM 0.3541176470588235 //mm/pixel
+#define SPATIAL_RESOLUTION_MM 0.4158823529411765 //mm/pixel
 
 // Calculate derived constants
 #define WHEEL_CIRCUMFERENCE (PI * WHEEL_DIAMETER)      // meter

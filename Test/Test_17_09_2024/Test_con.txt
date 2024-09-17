@@ -1,0 +1,4 @@
+Bruger D's led lys (mangler ca. 14 leds)
+Lys mounted cm = 6cm
+camera = 98cm
+
