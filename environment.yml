@@ -16,14 +16,14 @@ dependencies:
   # Additional dependencies
   - numpy
   - opencv
-  
+  - matplotlib
+  - scipy  # Useful for scientific computations
+  - pandas  # Useful for data handling
+  - scikit-learn  # Useful for machine learning models
+
   - pip:
     - black
     - pypylon
     - flake8
     - isort
     - -e .
-
-
-  
-  
