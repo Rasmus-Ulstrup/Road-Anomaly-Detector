@@ -6,7 +6,7 @@ import cv2
 
 # Constants
 SCANLINE_HEIGHT = 1
-VIRTUAL_FRAME_HEIGHT = 1000
+VIRTUAL_FRAME_HEIGHT = 100
 
 # Initialize GigE camera
 tl_factory = py.TlFactory.GetInstance()
@@ -23,12 +23,12 @@ else:
 # Open and configure camera
 cam.Open()
 cam.Height = SCANLINE_HEIGHT
-cam.Width = cam.Width.Max
+cam.Width.Value = 1072
 #cam.CenterX = True
 #cam.CenterY = True
 cam.PixelFormat = "Mono8"  # Set to monochrome format
 cam.Gain = 1
-cam.ExposureTime = 900
+cam.ExposureTime = 10000
 
 # Start grabbing
 cam.StartGrabbing()
