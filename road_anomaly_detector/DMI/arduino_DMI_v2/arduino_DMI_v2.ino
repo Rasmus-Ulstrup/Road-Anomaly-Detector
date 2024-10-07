@@ -25,6 +25,9 @@ float spatialResolution;          // Spatial resolution in meters per pixel
 volatile float encoderTicks = 0;
 static float encoderThreshold = 200;
 
+
+unsigned long lastTriggerTime = 0;
+const unsigned long pulseDurationMicros = 10;  // 10 microseconds for the pulse
 void setup() {
   Serial.begin(9600);
   Serial.println("Enter the working distance (WD) in meters (or wait 30 seconds for default):");
@@ -65,7 +68,16 @@ void setup() {
 }
 
 void loop() {
+  if (encoderTicks >= encoderThreshold) {
+    encoderTicks = 0;  // Reset encoder count
+    digitalWrite(lineRatePin, HIGH);  // Trigger camera
+    lastTriggerTime = micros();  // Record the time of the trigger
+  }
 
+  // Check if it's time to pull the lineRatePin back to LOW
+  if (digitalRead(lineRatePin) == HIGH && (micros() - lastTriggerTime) >= pulseDurationMicros) {
+    digitalWrite(lineRatePin, LOW);  // Reset trigger
+  }
 }
 
 void updateEncoder() {
