@@ -4,7 +4,7 @@ import cv2
 
 # Constants
 SCANLINE_HEIGHT = 1
-VIRTUAL_FRAME_HEIGHT = 18700
+VIRTUAL_FRAME_HEIGHT = 1000
 
 # Initialize GigE camera
 tl_factory = py.TlFactory.GetInstance()
@@ -55,8 +55,9 @@ for idx in range(VIRTUAL_FRAME_HEIGHT // SCANLINE_HEIGHT):
             img[idx * SCANLINE_HEIGHT:idx * SCANLINE_HEIGHT + SCANLINE_HEIGHT] = missing_line
             print(idx)
 
+mirrored_img = cv2.flip(img,1)
 # Display the resulting frame
-cv2.imshow('Linescan View', img)
+cv2.imshow('Linescan View', mirrored_img)
 print("Press a key to close....")
 cv2.waitKey(0)  # Wait indefinitely until a key is pressed
 

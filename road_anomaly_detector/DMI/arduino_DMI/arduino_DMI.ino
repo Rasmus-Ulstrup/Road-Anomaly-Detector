@@ -23,7 +23,7 @@ float fieldOfView;                // Field of view in millimeters
 float spatialResolution;          // Spatial resolution in meters per pixel
 
 volatile float encoderTicks = 0;
-static float encoderThreshold = 1;
+static float encoderThreshold = 16*4;
 
 
 unsigned long lastTriggerTime = 0;
