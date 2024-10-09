@@ -10,7 +10,7 @@ constexpr int TICKS_PER_REVOLUTION = 2000;
 const int Resolution_H = 4096;    // Horizontal resolution in pixels
 const float Pixel_size = 3.5;     // Pixel size in micrometers (µm)
 const float Focal = 8.5;          // Focal length in millimeters (mm)
-const float defaultWD = 0.8;      // Default working distance in meters
+const float defaultWD = 0.78;      // Default working distance in meters
 
 // Function prototype
 float calculateSpatialResolution(float WD);
@@ -22,8 +22,9 @@ float sensorWidth_mm;             // Sensor width in millimeters
 float fieldOfView;                // Field of view in millimeters
 float spatialResolution;          // Spatial resolution in meters per pixel
 
-volatile float encoderTicks = 0;
-static float encoderThreshold = 16*4;
+volatile int16_t encoderTicks = 0;
+static int16_t encoderThreshold = 4;
+int16_t encoderAll = 0;
 
 
 unsigned long lastTriggerTime = 0;
@@ -37,7 +38,7 @@ void setup() {
   bool inputReceived = false;
 
   // Wait for input or timeout after 30 seconds (30000 milliseconds)
-  while (millis() - startTime < 30000) {
+  while (millis() - startTime < 100) {
     if (Serial.available() > 0) {
       WD = Serial.parseFloat();
       inputReceived = true;
@@ -63,8 +64,8 @@ void setup() {
   pinMode(encoderPinB, INPUT_PULLUP);
 
   // Attach interrupts for both encoder pins to maximize resolution
-  attachInterrupt(digitalPinToInterrupt(encoderPinA), updateEncoder, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(encoderPinB), updateEncoder, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(encoderPinA), updateEncoder, RISING);
+  //attachInterrupt(digitalPinToInterrupt(encoderPinB), updateEncoder, RISING);
 }
 
 void loop() {
@@ -81,7 +82,7 @@ void loop() {
 }
 
 void updateEncoder() {
-  encoderTicks++;
+  encoderTicks++;  
 }
 
 float calculateSpatialResolution(float WD) {

@@ -61,7 +61,7 @@ while True:
             print(f"Missing line at index {idx}")
 
     idx += 1
-
+    cv2.imshow('Linescan View', img[:idx* SCANLINE_HEIGHT])
     # Check for user input to stop the loop
     if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to stop
         break

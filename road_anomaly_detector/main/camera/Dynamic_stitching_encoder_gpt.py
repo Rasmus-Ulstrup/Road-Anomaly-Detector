@@ -2,22 +2,29 @@ import pypylon.pylon as py
 import numpy as np
 import cv2
 import threading
-
+from pynput import keyboard
+import os
 # Global flag to signal when to stop the loop
 stop_capture = False
-
+key = False
 # Function to listen for 'q' key press in a separate thread
+
 def listen_for_keypress():
     global stop_capture
-    input("Press 'q' and then Enter to stop capturing...\n")
+    input()
     stop_capture = True
 
 # Function to save the image
 def save_image(image):
     save_prompt = input("Would you like to save the image? (y/n): ").strip().lower()
     if save_prompt == 'y':
+        directory = ""
+
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         file_name = input("Enter the file name (with extension, e.g., image.png): ").strip()
-        cv2.imwrite(file_name, image)
+        file_path = os.path.join(directory,file_name)
+        cv2.imwrite(file_path, image)
         print(f"Image saved as {file_name}")
     else:
         print("Image not saved.")
@@ -91,9 +98,9 @@ def capture_images(cam):
     cam.StopGrabbing()
 
     # Display the final image once the loop is stopped
-    cv2.imshow('Linescan View', img[:idx * 1])  # Display only the part that has been filled
-    print("Press a key to close....")
-    cv2.waitKey(0)  # Wait indefinitely until a key is pressed
+    #cv2.imshow('Linescan View', img[:idx * 1])  # Display only the part that has been filled
+    #print("Press a key to close....")
+    #cv2.waitKey(0)  # Wait indefinitely until a key is pressed
 
     # Optionally save the image
     save_image(img[:idx * 1])

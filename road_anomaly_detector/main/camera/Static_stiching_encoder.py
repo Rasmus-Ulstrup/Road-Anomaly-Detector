@@ -4,7 +4,7 @@ import cv2
 
 # Constants
 SCANLINE_HEIGHT = 1
-VIRTUAL_FRAME_HEIGHT = 1000
+VIRTUAL_FRAME_HEIGHT = 8000
 
 # Initialize GigE camera
 tl_factory = py.TlFactory.GetInstance()
