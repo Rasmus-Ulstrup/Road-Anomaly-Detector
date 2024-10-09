@@ -74,10 +74,13 @@ while True:
 
     idx += 1
 
-    # Display the growing image to ensure window focus and capture key presses
-    cv2.imshow('Linescan View', img[:idx * SCANLINE_HEIGHT])  # Display only the filled part
-    if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to stop
+    # Check for key press on every iteration
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
+
+    # Update display every 5000 scanlines
+    if idx % 5000 == 0:
+        cv2.imshow('Linescan View', img[:idx * SCANLINE_HEIGHT])  # Display only the filled part
 
 # Display the final image
 cv2.imshow('Linescan View', img[:idx * SCANLINE_HEIGHT])  # Display only the part that has been filled
