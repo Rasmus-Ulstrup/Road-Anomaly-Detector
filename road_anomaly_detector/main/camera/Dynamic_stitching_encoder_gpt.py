@@ -1,6 +1,7 @@
 import pypylon.pylon as py
 import numpy as np
 import cv2
+import keyboard  # Library to capture keyboard input
 
 # Constants
 SCANLINE_HEIGHT = 1
@@ -74,15 +75,12 @@ while True:
 
     idx += 1
 
-    # Check for key press on every iteration
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    # Check for "q" key press using keyboard library
+    if keyboard.is_pressed('q'):
+        print("Stopping capture...")
         break
 
-    # Update display every 5000 scanlines
-    if idx % 5000 == 0:
-        cv2.imshow('Linescan View', img[:idx * SCANLINE_HEIGHT])  # Display only the filled part
-
-# Display the final image
+# Display the final image once the loop is stopped
 cv2.imshow('Linescan View', img[:idx * SCANLINE_HEIGHT])  # Display only the part that has been filled
 print("Press a key to close....")
 cv2.waitKey(0)  # Wait indefinitely until a key is pressed
