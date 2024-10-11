@@ -4,13 +4,10 @@ const int encoderPinB = 3;
 const int lineRatePin = 8;  
 
 // Constants
-constexpr bool debugEnable = true;
-constexpr int TICKS_PER_REVOLUTION = 2000;
-
 const int Resolution_H = 4096;    // Horizontal resolution in pixels
 const float Pixel_size = 3.5;     // Pixel size in micrometers (µm)
 const float Focal = 8.5;          // Focal length in millimeters (mm)
-const float defaultWD = 0.78;      // Default working distance in meters
+const float defaultWD = 0.784;      // Default working distance in meters
 
 // Function prototype
 float calculateSpatialResolution(float WD);
@@ -23,12 +20,13 @@ float fieldOfView;                // Field of view in millimeters
 float spatialResolution;          // Spatial resolution in meters per pixel
 
 volatile int16_t encoderTicks = 0;
-static int16_t encoderThreshold = 8;
+static int16_t encoderThreshold = 4*2;
 int16_t encoderAll = 0;
 
 
 unsigned long lastTriggerTime = 0;
 const unsigned long pulseDurationMicros = 150;  // 10 microseconds for the pulse
+
 void setup() {
   Serial.begin(9600);
   Serial.println("Enter the working distance (WD) in meters (or wait 30 seconds for default):");

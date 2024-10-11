@@ -4,7 +4,7 @@ import cv2
 
 # Constants
 SCANLINE_HEIGHT = 1
-VIRTUAL_FRAME_HEIGHT = 3114*3
+VIRTUAL_FRAME_HEIGHT = int(3114*6 / 2)
 
 # Initialize GigE camera
 tl_factory = py.TlFactory.GetInstance()
@@ -24,7 +24,7 @@ cam.Height.Value = SCANLINE_HEIGHT
 cam.Width.Value = cam.Width.Max
 cam.PixelFormat.Value = "Mono8"  # Set to monochrome format
 cam.Gain.Value = 1
-cam.ExposureTime.Value = 30
+cam.ExposureTime.Value = 20
 
 # Enable hardware trigger
 cam.TriggerSelector.Value = "LineStart"
@@ -44,6 +44,7 @@ img = np.ones((VIRTUAL_FRAME_HEIGHT, cam.Width.Value), dtype=np.uint8)
 missing_line = np.ones((SCANLINE_HEIGHT, cam.Width.Value), dtype=np.uint8) * 255
 
 print("Waiting for trigger...")
+print(VIRTUAL_FRAME_HEIGHT // SCANLINE_HEIGHT)
 
 # Capture one frame
 for idx in range(VIRTUAL_FRAME_HEIGHT // SCANLINE_HEIGHT):

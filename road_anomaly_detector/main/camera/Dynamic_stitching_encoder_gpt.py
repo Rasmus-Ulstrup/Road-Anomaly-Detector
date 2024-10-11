@@ -49,7 +49,7 @@ def setup_camera():
     cam.Width.Value = cam.Width.Max
     cam.PixelFormat.Value = "Mono8"  # Set to monochrome format
     cam.Gain.Value = 1
-    cam.ExposureTime.Value = 40
+    cam.ExposureTime.Value = 50
 
     # Enable hardware trigger
     cam.TriggerSelector.Value = "LineStart"
