@@ -23,7 +23,7 @@ float fieldOfView;                // Field of view in millimeters
 float spatialResolution;          // Spatial resolution in meters per pixel
 
 volatile int16_t encoderTicks = 0;
-static int16_t encoderThreshold = 4;
+static int16_t encoderThreshold = 8;
 int16_t encoderAll = 0;
 
 
@@ -65,7 +65,7 @@ void setup() {
 
   // Attach interrupts for both encoder pins to maximize resolution
   attachInterrupt(digitalPinToInterrupt(encoderPinA), updateEncoder, RISING);
-  //attachInterrupt(digitalPinToInterrupt(encoderPinB), updateEncoder, RISING);
+  attachInterrupt(digitalPinToInterrupt(encoderPinB), updateEncoder, RISING);
 }
 
 void loop() {

@@ -18,7 +18,7 @@ def listen_for_keypress():
 def save_image(image):
     save_prompt = input("Would you like to save the image? (y/n): ").strip().lower()
     if save_prompt == 'y':
-        directory = ""
+        directory = "/home/crackscope/Road-Anomaly-Detector/Test"
 
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -103,7 +103,8 @@ def capture_images(cam):
     #cv2.waitKey(0)  # Wait indefinitely until a key is pressed
 
     # Optionally save the image
-    save_image(img[:idx * 1])
+    mirrored_img = cv2.flip(img,1)
+    save_image(mirrored_img[:idx * 1])
 
     # Cleanup
     cam.Close()

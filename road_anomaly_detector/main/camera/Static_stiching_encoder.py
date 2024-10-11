@@ -4,7 +4,7 @@ import cv2
 
 # Constants
 SCANLINE_HEIGHT = 1
-VIRTUAL_FRAME_HEIGHT = 8000
+VIRTUAL_FRAME_HEIGHT = 3114*3
 
 # Initialize GigE camera
 tl_factory = py.TlFactory.GetInstance()
@@ -24,7 +24,7 @@ cam.Height.Value = SCANLINE_HEIGHT
 cam.Width.Value = cam.Width.Max
 cam.PixelFormat.Value = "Mono8"  # Set to monochrome format
 cam.Gain.Value = 1
-cam.ExposureTime.Value = 40
+cam.ExposureTime.Value = 100
 
 # Enable hardware trigger
 cam.TriggerSelector.Value = "LineStart"
