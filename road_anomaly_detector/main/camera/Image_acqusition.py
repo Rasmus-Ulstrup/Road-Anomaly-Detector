@@ -1,49 +1,49 @@
 import pypylon.pylon as py
 import numpy as np
 import cv2
-from tkinter import Tk
-from tkinter.filedialog import askdirectory
+from tkinter import Tk, TclError, filedialog
 import os
 
 class LineScanCamera:
     SCANLINE_HEIGHT = 1
-    VIRTUAL_FRAME_HEIGHT = 3114  # 1 meter
+    VIRTUAL_FRAME_HEIGHT_DEFAULT = 3114  # 1 meter
 
-    def __init__(self):
-        # User input for image length in meters
-        self.get_image_length()
+    def __init__(self, trigger='encoder', frame_height=VIRTUAL_FRAME_HEIGHT_DEFAULT, compression='png'):
+        self.trigger = trigger
+        self.VIRTUAL_FRAME_HEIGHT = int(frame_height)  # Set frame height based on user input
+        self.compression = compression  # Set the image compression format
         
         # Set up folder for saving captured images
+        self.directory = "/home/crackscope/Road-Anomaly-Detector/Test"
         self.setup_output_folder()
 
         # Initialize camera
         self.cam = self.initialize_camera()
 
-        # Configure camera
+        # Configure camera based on trigger type
         self.configure_camera()
 
         # Initialize the image and missing line placeholders
         self.img = np.ones((self.VIRTUAL_FRAME_HEIGHT, self.cam.Width.Value), dtype=np.uint8)
         self.missing_line = np.ones((self.SCANLINE_HEIGHT, self.cam.Width.Value), dtype=np.uint8) * 255
 
-    def get_image_length(self):
-        try:
-            image_length_meters = float(input("Enter the image length (in meters): "))
-            self.VIRTUAL_FRAME_HEIGHT = int(image_length_meters * self.VIRTUAL_FRAME_HEIGHT)  # Assuming 1 meter = 3114 scanlines
-        except ValueError:
-            print("Invalid input. Using default length of 1 meter.")
-            self.VIRTUAL_FRAME_HEIGHT = 3114  # Default 1 meter
-        self.VIRTUAL_FRAME_HEIGHT = int(3114 * 6 / 2)  # Final adjustment
-
     def setup_output_folder(self):
-        print("Select a folder to save the captured image:")
-        Tk().withdraw()  # Hide the root window
-        self.output_folder = askdirectory()
-        if not self.output_folder:
-            print("No folder selected, saving to current directory.")
-            self.output_folder = os.getcwd()  # Default to current working directory
-        self.output_path = os.path.join(self.output_folder, "captured_image.png")
-        print(f"Image will be saved to: {self.output_path}")
+        try:
+            # Try to use Tkinter if available
+            print("Enter a folder name to save the captured image:")
+            folder_name = input("Folder name: ")
+            self.output_folder = os.path.join(self.directory, folder_name)
+            
+            # Create the folder if it doesn't exist
+            os.makedirs(self.output_folder, exist_ok=True)
+
+            self.output_path = os.path.join(self.output_folder, f"captured_image.{self.compression}")
+            print(f"Image will be saved to: {self.output_path}")
+        except Exception as e:
+            print(f"Error while setting up output folder: {e}")
+            self.output_folder = os.getcwd()  # Fallback to current working directory
+            self.output_path = os.path.join(self.output_folder, f"captured_image.{self.compression}")
+
 
     def initialize_camera(self):
         tl_factory = py.TlFactory.GetInstance()
@@ -63,11 +63,20 @@ class LineScanCamera:
         self.cam.Gain.Value = 1
         self.cam.ExposureTime.Value = 20
 
-        # Enable hardware trigger
-        self.cam.TriggerSelector.Value = "LineStart"
-        self.cam.TriggerSource.Value = "Line1"
-        self.cam.TriggerMode.Value = "On"
-        self.cam.TriggerActivation.Value = "RisingEdge"
+        # Configure trigger
+        if self.trigger == 'encoder':
+            self.cam.TriggerSelector.Value = "LineStart"
+            self.cam.TriggerSource.Value = "Line1"
+            self.cam.TriggerMode.Value = "On"
+            self.cam.TriggerActivation.Value = "RisingEdge"
+        else:
+            # Configure for software trigger if specified
+            #self.cam.TriggerSelector.Value = "FrameStart"
+            #self.cam.TriggerSource.Value = "Software"
+            #self.cam.TriggerMode.Value = "On"
+            #self.cam.TriggerActivation.Value = "RisingEdge"
+            None
+
         print("TriggerSource:", self.cam.TriggerSource.Value)
         print("TriggerMode:", self.cam.TriggerMode.Value)
         print("AcquisitionMode:", self.cam.AcquisitionMode.Value)
@@ -103,12 +112,13 @@ class LineScanCamera:
         cv2.destroyAllWindows()
 
 def main():
-    # Create instance of the LineScanCamera class
-    camera = LineScanCamera()
+    # Create instance of the LineScanCamera class with parameters
+    #if trigger != encoder it will be software trigger
+    camera = LineScanCamera(trigger='', frame_height=1, compression='png')
     
     # Capture and display the image
     camera.capture_image()
-    camera.show_image()
+    #camera.show_image()
     camera.save_image()
     
     # Cleanup the resources
