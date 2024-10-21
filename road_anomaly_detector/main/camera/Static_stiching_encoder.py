@@ -7,26 +7,7 @@ from tkinter.filedialog import askdirectory
 import os
 # Constants
 SCANLINE_HEIGHT = 1
-VIRTUAL_FRAME_HEIGHT = 3114 # 1 meter
-
-# User input for image length in meters
-try:
-    image_length_meters = float(input("Enter the image length (in meters): "))
-    VIRTUAL_FRAME_HEIGHT = int(image_length_meters * VIRTUAL_FRAME_HEIGHT)  # Assuming 1 meter = 3114 scanlines
-except ValueError:
-    print("Invalid input. Using default length of 1 meter.")
-    VIRTUAL_FRAME_HEIGHT = 3114  # Default 1 meter
-
-# Prompt user to select a folder to save the image
-print("Select a folder to save the captured image:")
-output_folder = askdirectory()
-if not output_folder:
-    print("No folder selected, saving to current directory.")
-    output_folder = os.getcwd()  # Default to current working directory
-
-# Image file path
-output_path = os.path.join(output_folder, "captured_image.png")
-print(f"Image will be saved to: {output_path}")
+VIRTUAL_FRAME_HEIGHT = 3114 
 
 # Initialize GigE camera
 tl_factory = py.TlFactory.GetInstance()
@@ -46,7 +27,7 @@ cam.Height.Value = SCANLINE_HEIGHT
 cam.Width.Value = cam.Width.Max
 cam.PixelFormat.Value = "Mono8"  # Set to monochrome format
 cam.Gain.Value = 1
-cam.ExposureTime.Value = 30
+cam.ExposureTime.Value = 20
 
 # Enable hardware trigger
 cam.TriggerSelector.Value = "LineStart"
@@ -66,6 +47,7 @@ img = np.ones((VIRTUAL_FRAME_HEIGHT, cam.Width.Value), dtype=np.uint8)
 missing_line = np.ones((SCANLINE_HEIGHT, cam.Width.Value), dtype=np.uint8) * 255
 
 print("Waiting for trigger...")
+print(VIRTUAL_FRAME_HEIGHT // SCANLINE_HEIGHT)
 
 # Capture one frame
 for idx in range(VIRTUAL_FRAME_HEIGHT // SCANLINE_HEIGHT):
