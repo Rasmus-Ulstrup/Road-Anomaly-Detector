@@ -88,12 +88,11 @@ def main():
         print(f"Initial resolution: {initial_resolution}")
         input("Press Enter to start the paper calibration scheme...")
 
-        camera = LineScanCamera(trigger='', frame_height=1, compression='png')
-
         # Create instance of the LineScanCamera class with parameters
         # if trigger != encoder it will be software trigger
         spartial_res_1m = 1 / cam.getSpartial() / 1000 # 1 m / spartial_res
-        camera = LineScanCamera(trigger='', frame_height=spartial_res_1m, compression='png')
+        
+        camera = LineScanCamera(trigger='encoder', frame_height=spartial_res_1m, compression='png')
 
         # Replace start_calibration code here:
         a4_height_mm, a4_width_mm = 297, 210
