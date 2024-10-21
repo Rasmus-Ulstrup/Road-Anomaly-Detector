@@ -11,7 +11,6 @@ class LineScanCamera:
         self.compression = compression
 
         # Set up folder for saving captured images
-        self.setup_output_folder()
 
         # Initialize camera
         self.cam = self.initialize_camera()
@@ -29,12 +28,11 @@ class LineScanCamera:
 
     def get_image_length(self):
         try:
-            image_length_meters = float(input("Enter the image length (in meters): "))
+            image_length_meters = int(input("Enter the image length (in meters): "))
             self.VIRTUAL_FRAME_HEIGHT = int(image_length_meters * self.VIRTUAL_FRAME_HEIGHT)  # Assuming 1 meter = 3114 scanlines
         except ValueError:
             print("Invalid input. Using default length of 1 meter.")
             self.VIRTUAL_FRAME_HEIGHT = 3114  # Default 1 meter
-        self.VIRTUAL_FRAME_HEIGHT = int(3114 * 6 / 2)  # Final adjustment
 
     def setup_output_folder(self):
         try:
@@ -89,6 +87,7 @@ class LineScanCamera:
     def capture_image(self):
         self.cam.StartGrabbing()
         print("Waiting for trigger...")
+        print(self.VIRTUAL_FRAME_HEIGHT)
 
         # Capture one frame
         for idx in range(self.VIRTUAL_FRAME_HEIGHT):
@@ -109,6 +108,7 @@ class LineScanCamera:
         cv2.waitKey(0)  # Wait indefinitely until a key is pressed
 
     def save_image(self):
+        self.setup_output_folder()
         # Logic to handle file naming if the image already exists
         base_path = os.path.splitext(self.output_path)[0]
         count = 0
@@ -124,7 +124,7 @@ class LineScanCamera:
 
 def main():
     # Create instance of the LineScanCamera class
-    camera = LineScanCamera(frame_height=1, trigger='encoder', compression='png')
+    camera = LineScanCamera(frame_height=3114/2, trigger='encoder', compression='png')
     
     # Capture and display the image
     camera.capture_image()

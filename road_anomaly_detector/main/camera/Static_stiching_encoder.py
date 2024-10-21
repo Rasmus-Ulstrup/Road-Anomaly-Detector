@@ -7,27 +7,27 @@ from tkinter.filedialog import askdirectory
 import os
 # Constants
 SCANLINE_HEIGHT = 1
-VIRTUAL_FRAME_HEIGHT = 3114 # 1 meter
+VIRTUAL_FRAME_HEIGHT = 1000 # 1 meter
 
-# User input for image length in meters
-try:
-    image_length_meters = float(input("Enter the image length (in meters): "))
-    VIRTUAL_FRAME_HEIGHT = int(image_length_meters * VIRTUAL_FRAME_HEIGHT)  # Assuming 1 meter = 3114 scanlines
-except ValueError:
-    print("Invalid input. Using default length of 1 meter.")
-    VIRTUAL_FRAME_HEIGHT = 3114  # Default 1 meter
+# # User input for image length in meters
+# try:
+#     image_length_meters = float(input("Enter the image length (in meters): "))
+#     VIRTUAL_FRAME_HEIGHT = int(image_length_meters * VIRTUAL_FRAME_HEIGHT)  # Assuming 1 meter = 3114 scanlines
+# except ValueError:
+#     print("Invalid input. Using default length of 1 meter.")
+#     VIRTUAL_FRAME_HEIGHT = 3114  # Default 1 meter
 
-# Prompt user to select a folder to save the image
-print("Select a folder to save the captured image:")
-output_folder = askdirectory()
-if not output_folder:
-    print("No folder selected, saving to current directory.")
-    output_folder = os.getcwd()  # Default to current working directory
+# # Prompt user to select a folder to save the image
+# print("Select a folder to save the captured image:")
+# output_folder = askdirectory()
+# if not output_folder:
+#     print("No folder selected, saving to current directory.")
+#     output_folder = os.getcwd()  # Default to current working directory
 
-# Image file path
-output_path = os.path.join(output_folder, "captured_image.png")
-print(f"Image will be saved to: {output_path}")
-VIRTUAL_FRAME_HEIGHT = int(3114*6 / 2)
+# # Image file path
+# output_path = os.path.join(output_folder, "captured_image.png")
+# print(f"Image will be saved to: {output_path}")
+# VIRTUAL_FRAME_HEIGHT = int(3114*6 / 2)
 
 # Initialize GigE camera
 tl_factory = py.TlFactory.GetInstance()
