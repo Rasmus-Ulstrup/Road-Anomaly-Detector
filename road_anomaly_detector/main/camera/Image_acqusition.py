@@ -5,7 +5,7 @@ from tkinter import Tk, TclError, filedialog
 import os
 
 class LineScanCamera:
-    def __init__(self, frame_height=3114, trigger='encoder', compression='png'):
+    def __init__(self, frame_height=1557, trigger='encoder', compression='png'):
         self.VIRTUAL_FRAME_HEIGHT = frame_height  # Set from parameter
         self.trigger = trigger
         self.compression = compression
@@ -101,6 +101,7 @@ class LineScanCamera:
 
         self.cam.StopGrabbing()
         return self.img
+        
     def show_image(self):
         mirrored_img = cv2.flip(self.img, 1)
         cv2.imshow('Linescan View', mirrored_img)
@@ -124,7 +125,7 @@ class LineScanCamera:
 
 def main():
     # Create instance of the LineScanCamera class
-    camera = LineScanCamera(frame_height=3114/2, trigger='encoder', compression='png')
+    camera = LineScanCamera(frame_height=1557, trigger='', compression='png')
     
     # Capture and display the image
     camera.capture_image()
