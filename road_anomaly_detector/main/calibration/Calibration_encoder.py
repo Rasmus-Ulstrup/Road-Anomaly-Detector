@@ -43,7 +43,7 @@ def find_paper_contour(image, lower=170, upper=255, blur=True):
 
     big_contour = max(contours, key=cv2.contourArea)
     
-    return big_contour
+    return big_contour, thresh, morph, contours
 
 def calculate_dimensions_from_contour(image, contour):
     """Approximate a contour to a polygon and calculate its dimensions."""
@@ -65,10 +65,41 @@ def calculate_dimensions_from_contour(image, contour):
 
     return np.round(height_px), np.round(width_px), polygon
 
+def display_stages(image, thresh, morph, contours, polygon):
+    """Display the thresh, morph, contours, and polygon stages in one figure."""
+    fig, axes = plt.subplots(2, 2, figsize=(10, 10))
+    
+    # Display thresholded image
+    axes[0, 0].imshow(thresh, cmap='gray')
+    axes[0, 0].set_title("Threshold")
+    axes[0, 0].axis('off')
+
+    # Display morphology result
+    axes[0, 1].imshow(morph, cmap='gray')
+    axes[0, 1].set_title("Morphology")
+    axes[0, 1].axis('off')
+
+    # Display contours
+    contour_image = image.copy()
+    cv2.drawContours(contour_image, contours, -1, (0, 255, 0), 2)
+    axes[1, 0].imshow(contour_image, cmap='gray')
+    axes[1, 0].set_title("Contours")
+    axes[1, 0].axis('off')
+
+    # Display polygon
+    axes[1, 1].imshow(polygon, cmap='gray')
+    axes[1, 1].set_title("Polygon")
+    axes[1, 1].axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
 def paper_size(image, lower=170, upper=255, blur=True):
     """Find and return paper size (height and width in pixels) and polygon representation."""
-    contour = find_paper_contour(image, lower, upper, blur)
-    return calculate_dimensions_from_contour(image, contour)
+    contour, thresh, morph, contours = find_paper_contour(image, lower, upper, blur)
+    height_px, width_px, polygon = calculate_dimensions_from_contour(image, contour)
+    display_stages(image, thresh, morph, contours, polygon)
+    return height_px, width_px, polygon
 
 def main():
     try:
@@ -88,46 +119,36 @@ def main():
         print(f"Initial resolution: {initial_resolution}")
         input("Press Enter to start the paper calibration scheme...")
 
-        # Create instance of the LineScanCamera class with parameters
-        # if trigger != encoder it will be software trigger
         spartial_res_1m = 1 / cam.getSpartial() / 1000 # 1 m / spartial_res
-
         camera = LineScanCamera(trigger='encoder', frame_height=spartial_res_1m, compression='png')
 
-        # Replace start_calibration code here:
         a4_height_mm, a4_width_mm = 297, 210
 
         while True:
-            # Capture image
+            #image = load_image("road_anomaly_detector/main/calibration/cali1.png")
             image = camera.capture_image()
 
             # Display image
             camera.show_image()
 
-            # Get the dimensions of the paper in the image
             height_px, width_px, polygon = paper_size(image)
 
-            # Convert pixel dimensions to millimeters
             height_mm = height_px * cam.getSpartial()
             width_mm = width_px * cam.getSpartial()
 
-            # Calculate error in the dimensions
             error_height = (abs(height_mm - a4_height_mm) / a4_height_mm) * 100
             error_width = (abs(width_mm - a4_width_mm) / a4_width_mm) * 100
 
-            # Suggest a new encoder resolution based on the error
             new_resolution = initial_resolution + (initial_resolution * error_height / 100)
             initial_resolution = new_resolution
 
-            # Display calibration information
             print(f"\nPixels: {height_px} x {width_px}")
             print(f"Real size [mm]: {height_mm:.2f} x {width_mm:.2f}")
             print(f"Error [%]: {error_height:.2f}% x {error_width:.2f}%")
             print(f"Suggested new resolution: {new_resolution:.2f}\n")
 
-            # Ask the user if they want to recalibrate or quit
             if input("Type 'q' to quit, or any other key to recalibrate: ").lower() == 'q':
-                camera.cleanup()
+                # camera.cleanup()
                 break
 
     except Exception as e:
