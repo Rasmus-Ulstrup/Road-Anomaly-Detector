@@ -127,7 +127,7 @@ def main():
         print(f"Initial resolution: {initial_resolution}")
         input("Press Enter to start the paper calibration scheme...")
 
-        spartial_res_1m = 1.1 / (cam.getSpartial() / 1000) # 1 m / spartial_res
+        spartial_res_1m = 1 / (cam.getSpartial() / 1000) # 1 m / spartial_res
         print(spartial_res_1m)
         camera = LineScanCamera(trigger='encoder', exposure=10, frame_height=spartial_res_1m, compression='png')
 
@@ -140,7 +140,7 @@ def main():
             # Display image
             print("picture taken...")
             display_image(image)
-            save_path = f'road_anomaly_detector/main/calibration/enoder_test_1.png'  # Modify this path as needed
+            save_path = f'road_anomaly_detector/main/calibration/enoder_test_3.png'  # Modify this path as needed
             save_image(image, save_path)
 
             height_px, width_px, _ = paper_size(image)
