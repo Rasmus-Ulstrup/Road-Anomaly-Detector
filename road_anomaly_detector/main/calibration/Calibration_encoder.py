@@ -25,6 +25,13 @@ def save_image(image, save_path):
         raise IOError(f"Error: Unable to save image to {save_path}")
     print(f"Image saved successfully at {save_path}")
 
+def save_image(image, save_path):
+    """Save an image to the specified path."""
+    success = cv2.imwrite(save_path, image)
+    if not success:
+        raise IOError(f"Error: Unable to save image to {save_path}")
+    print(f"Image saved successfully at {save_path}")
+
 def find_paper_contour(image, lower=170, upper=255, blur=True):
     """Detect paper contour in the image using thresholding and morphological operations."""
     if blur:
@@ -127,12 +134,14 @@ def main():
         a4_height_mm, a4_width_mm = 15235, 4375
 
         while True:
-            image = load_image("road_anomaly_detector/main/calibration/cali1.png")
+            #image = load_image("road_anomaly_detector/main/calibration/cali1.png")
             image = camera.capture_image()
 
             # Display image
             print("picture taken...")
             display_image(image)
+            save_path = f'road_anomaly_detector/main/calibration/enoder_test_1.png'  # Modify this path as needed
+            save_image(image, save_path)
 
             height_px, width_px, polygon = paper_size(image)
 
