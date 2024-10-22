@@ -104,7 +104,8 @@ def paper_size(image, lower=170, upper=255, blur=True):
 def main():
     try:
         print("Starting encoding calibration process...")
-        WD = float(input("Enter Work distance (in meters): "))
+        #WD = float(input("Enter Work distance (in meters): "))
+        WD = 0.764
 
         cam_specs = {
             "Resolution": (4096/2, 1),
@@ -119,17 +120,19 @@ def main():
         print(f"Initial resolution: {initial_resolution}")
         input("Press Enter to start the paper calibration scheme...")
 
-        spartial_res_1m = 1 / cam.getSpartial() / 1000 # 1 m / spartial_res
-        camera = LineScanCamera(trigger='encoder', frame_height=spartial_res_1m, compression='png')
+        spartial_res_1m = 1.1 / (cam.getSpartial() / 1000) # 1 m / spartial_res
+        print(spartial_res_1m)
+        camera = LineScanCamera(trigger='encoder', exposure=10, frame_height=spartial_res_1m, compression='png')
 
-        a4_height_mm, a4_width_mm = 297, 210
+        a4_height_mm, a4_width_mm = 15235, 4375
 
         while True:
-            #image = load_image("road_anomaly_detector/main/calibration/cali1.png")
+            image = load_image("road_anomaly_detector/main/calibration/cali1.png")
             image = camera.capture_image()
 
             # Display image
-            camera.show_image()
+            print("picture taken...")
+            display_image(image)
 
             height_px, width_px, polygon = paper_size(image)
 

@@ -59,7 +59,7 @@ def calculate_middle_line(coordinates):
         middle_coords[0] = coordinates[int(np.floor(line_count))]
         middle_coords[1] = coordinates[int(np.ceil(line_count))]
     else:
-        middle_coords = coordinatesq[int(line_count)]
+        middle_coords = coordinates[int(line_count)]
 
     return middle_coords
 
