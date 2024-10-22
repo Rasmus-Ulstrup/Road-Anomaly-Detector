@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 from tkinter import Tk, TclError, filedialog
 import os
+import threading
 
 class LineScanCamera:
     def __init__(self, frame_height=1557, exposure=20, trigger='encoder', compression='png'):
@@ -21,6 +22,8 @@ class LineScanCamera:
         self.img = np.ones((self.VIRTUAL_FRAME_HEIGHT, self.cam.Width.Value), dtype=np.uint8)
         self.missing_line = np.ones((1, self.cam.Width.Value), dtype=np.uint8) * 255  # Scanline height is always 1
 
+        # Flag to stop capture loop
+        self.stop_capture = False
     def image_length_mode(self):
         try:
             print("!Remeber in this mode, variable frame_height is spatial resulotion for 1 meter!")
@@ -95,6 +98,34 @@ class LineScanCamera:
 
         self.cam.StopGrabbing()
         return self.img
+    def capture_image_dynamic(self):
+        self.cam.StartGrabbing()
+
+        # Create a separate thread to listen for user input
+        input_thread = threading.Thread(target=self.wait_for_stop_signal)
+        input_thread.start()
+
+        print("Capturing dynamic image. Press ENTER to stop capturing and save the image.")
+        
+        # Capture loop
+        while not self.stop_capture:
+            with self.cam.RetrieveResult(20000) as result:
+                if result.GrabSucceeded():
+                    with result.GetArrayZeroCopy() as out_array:
+                        # Append the new scanline to the existing image
+                        self.img = np.vstack((self.img, out_array))
+                else:
+                    # Append a missing line if the grab failed
+                    self.img = np.vstack((self.img, self.missing_line))
+                    print(f"Missing line at index {self.img.shape[0]}")
+
+        self.cam.StopGrabbing()
+        input_thread.join()  # Ensure input thread completes
+        return self.img
+
+    def wait_for_stop_signal(self):
+        input()  # Wait for user to press ENTER
+        self.stop_capture = True  # Set flag to stop the capture
         
     def show_image(self):
         mirrored_img = cv2.flip(self.img, 1)
@@ -119,14 +150,15 @@ class LineScanCamera:
 
 def main():
     # Create instance of the LineScanCamera class
-    camera = LineScanCamera(frame_height=1557, trigger='', compression='png')
+    camera = LineScanCamera(frame_height=1557, trigger='encoder', compression='png')
 
     #Set length mode:
-    camera.image_length_mode()
+    #camera.image_length_mode()
     
     # Capture and display the image
-    camera.capture_image()
+    #camera.capture_image()
 
+    camera.capture_image_dynamic()
     #camera.show_image()  # Optional: Display the image
     camera.save_image()
     
