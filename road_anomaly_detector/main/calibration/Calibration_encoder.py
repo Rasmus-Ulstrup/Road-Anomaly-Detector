@@ -143,7 +143,7 @@ def main():
             save_path = f'road_anomaly_detector/main/calibration/enoder_test_1.png'  # Modify this path as needed
             save_image(image, save_path)
 
-            height_px, width_px, polygon = paper_size(image)
+            height_px, width_px, _ = paper_size(image)
 
             height_mm = height_px * cam.getSpartial()
             width_mm = width_px * cam.getSpartial()
