@@ -25,6 +25,13 @@ def save_image(image, save_path):
         raise IOError(f"Error: Unable to save image to {save_path}")
     print(f"Image saved successfully at {save_path}")
 
+def save_image(image, save_path):
+    """Save an image to the specified path."""
+    success = cv2.imwrite(save_path, image)
+    if not success:
+        raise IOError(f"Error: Unable to save image to {save_path}")
+    print(f"Image saved successfully at {save_path}")
+
 def find_paper_contour(image, lower=170, upper=255, blur=True):
     """Detect paper contour in the image using thresholding and morphological operations."""
     if blur:
@@ -120,21 +127,23 @@ def main():
         print(f"Initial resolution: {initial_resolution}")
         input("Press Enter to start the paper calibration scheme...")
 
-        spartial_res_1m = 1.1 / (cam.getSpartial() / 1000) # 1 m / spartial_res
+        spartial_res_1m = 1 / (cam.getSpartial() / 1000) # 1 m / spartial_res
         print(spartial_res_1m)
         camera = LineScanCamera(trigger='encoder', exposure=10, frame_height=spartial_res_1m, compression='png')
 
         a4_height_mm, a4_width_mm = 15235, 4375
 
         while True:
-            image = load_image("road_anomaly_detector/main/calibration/cali1.png")
+            #image = load_image("road_anomaly_detector/main/calibration/cali1.png")
             image = camera.capture_image()
 
             # Display image
             print("picture taken...")
             display_image(image)
+            save_path = f'road_anomaly_detector/main/calibration/enoder_test_3.png'  # Modify this path as needed
+            save_image(image, save_path)
 
-            height_px, width_px, polygon = paper_size(image)
+            height_px, width_px, _ = paper_size(image)
 
             height_mm = height_px * cam.getSpartial()
             width_mm = width_px * cam.getSpartial()
