@@ -91,7 +91,7 @@ def main():
         # Create instance of the LineScanCamera class with parameters
         # if trigger != encoder it will be software trigger
         spartial_res_1m = 1 / cam.getSpartial() / 1000 # 1 m / spartial_res
-        
+
         camera = LineScanCamera(trigger='encoder', frame_height=spartial_res_1m, compression='png')
 
         # Replace start_calibration code here:
@@ -127,6 +127,7 @@ def main():
 
             # Ask the user if they want to recalibrate or quit
             if input("Type 'q' to quit, or any other key to recalibrate: ").lower() == 'q':
+                camera.cleanup()
                 break
 
     except Exception as e:

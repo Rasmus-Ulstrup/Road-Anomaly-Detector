@@ -5,19 +5,14 @@ from tkinter import Tk, TclError, filedialog
 import os
 
 class LineScanCamera:
-    def __init__(self, frame_height=1557, trigger='encoder', compression='png'):
-        self.VIRTUAL_FRAME_HEIGHT = frame_height  # Set from parameter
+    def __init__(self, frame_height=1557, exposure=20, trigger='encoder', compression='png'):
+        self.VIRTUAL_FRAME_HEIGHT = round(frame_height)  # Set from parameter
         self.trigger = trigger
         self.compression = compression
-
-        # Set up folder for saving captured images
+        self.exposure = exposure
 
         # Initialize camera
         self.cam = self.initialize_camera()
-
-        # Call get_image_length only if in encoder mode
-        if self.trigger == 'encoder':
-            self.get_image_length()
         
         # Configure camera
         self.configure_camera()
@@ -26,13 +21,14 @@ class LineScanCamera:
         self.img = np.ones((self.VIRTUAL_FRAME_HEIGHT, self.cam.Width.Value), dtype=np.uint8)
         self.missing_line = np.ones((1, self.cam.Width.Value), dtype=np.uint8) * 255  # Scanline height is always 1
 
-    def get_image_length(self):
+    def image_length_mode(self):
         try:
-            image_length_meters = int(input("Enter the image length (in meters): "))
-            self.VIRTUAL_FRAME_HEIGHT = int(image_length_meters * self.VIRTUAL_FRAME_HEIGHT)  # Assuming 1 meter = 3114 scanlines
+            print("!Remeber in this mode, variable frame_height is spatial resulotion for 1 meter!")
+            image_length_meters = float(input("Enter the image length (in meters): "))
+            self.VIRTUAL_FRAME_HEIGHT = int(image_length_meters * self.VIRTUAL_FRAME_HEIGHT)  # Assuming 1 meter = 1557 scanlines
         except ValueError:
             print("Invalid input. Using default length of 1 meter.")
-            self.VIRTUAL_FRAME_HEIGHT = 3114  # Default 1 meter
+            self.VIRTUAL_FRAME_HEIGHT = 1557  # Default 1 meter
 
     def setup_output_folder(self):
         try:
@@ -66,7 +62,7 @@ class LineScanCamera:
         self.cam.Width.Value = self.cam.Width.Max
         self.cam.PixelFormat.Value = "Mono8"  # Set to monochrome format
         self.cam.Gain.Value = 1
-        self.cam.ExposureTime.Value = 20
+        self.cam.ExposureTime.Value = self.exposure
 
         # Enable trigger based on the parameter
         if self.trigger == 'encoder':
@@ -86,8 +82,6 @@ class LineScanCamera:
 
     def capture_image(self):
         self.cam.StartGrabbing()
-        print("Waiting for trigger...")
-        print(self.VIRTUAL_FRAME_HEIGHT)
 
         # Capture one frame
         for idx in range(self.VIRTUAL_FRAME_HEIGHT):
@@ -126,9 +120,13 @@ class LineScanCamera:
 def main():
     # Create instance of the LineScanCamera class
     camera = LineScanCamera(frame_height=1557, trigger='', compression='png')
+
+    #Set length mode:
+    camera.image_length_mode()
     
     # Capture and display the image
     camera.capture_image()
+
     #camera.show_image()  # Optional: Display the image
     camera.save_image()
     

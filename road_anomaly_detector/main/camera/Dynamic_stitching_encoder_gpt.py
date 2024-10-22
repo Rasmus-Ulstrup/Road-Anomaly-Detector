@@ -49,7 +49,7 @@ def setup_camera():
     cam.Width.Value = cam.Width.Max
     cam.PixelFormat.Value = "Mono8"  # Set to monochrome format
     cam.Gain.Value = 1
-    cam.ExposureTime.Value = 50
+    cam.ExposureTime.Value = 20
 
     # Enable hardware trigger
     cam.TriggerSelector.Value = "LineStart"
@@ -60,6 +60,8 @@ def setup_camera():
     print("TriggerMode", cam.TriggerMode.Value)
     print("AcquisitionMode", cam.AcquisitionMode.Value)
     
+    cam.PacketSize.SetValue(1500)  # Example packet size, adjust for your network
+    cam.InterPacketDelay.SetValue(1000)  # Increase if necessary
     return cam
 
 # Function to run the image acquisition in a separate thread
@@ -67,44 +69,30 @@ def capture_images(cam):
     global stop_capture
     cam.StartGrabbing()
 
-    # Create a 2D image array with an arbitrary large initial height
-    initial_height = 1000  # Start with 1000 scanlines
-    img = np.ones((initial_height, cam.Width.Value), dtype=np.uint8)
-    missing_line = np.ones((1, cam.Width.Value), dtype=np.uint8) * 255  # Placeholder for missing scanlines
+    # Preallocate a large image array based on expected maximum lines
+    max_lines = 100000  # Adjust this as necessary
+    img = np.zeros((max_lines, cam.Width.Value), dtype=np.uint8)  # Initialize with zeros
+    idx = 0
 
     print("Waiting for trigger...")
 
-    # Start capturing scanlines
-    idx = 0
     while not stop_capture:
-        # Dynamically resize the image array if needed
-        if idx >= img.shape[0]:
-            img = np.vstack((img, np.ones((1000, cam.Width.Value), dtype=np.uint8)))  # Increase height by 1000 scanlines
-
-        # Capture one frame
+        print(f"Grabbing frame {idx}...")  # Log frame index
         with cam.RetrieveResult(20000) as result:
             if result.GrabSucceeded():
-                # Correctly place the captured scanline in the image array
+                print(f"Frame {idx} successfully grabbed.")
                 with result.GetArrayZeroCopy() as out_array:
-                    img[idx * 1:idx * 1 + 1] = out_array
+                    img[idx] = out_array
+                idx += 1
             else:
-                # Fill in with the missing scanline placeholder
-                img[idx * 1:idx * 1 + 1] = missing_line
-                print(f"Missing line at index {idx}")
+                print(f"Frame {idx} grab failed.")
 
-        idx += 1
-
-    # Stop camera grabbing after loop ends
     cam.StopGrabbing()
 
-    # Display the final image once the loop is stopped
-    #cv2.imshow('Linescan View', img[:idx * 1])  # Display only the part that has been filled
-    #print("Press a key to close....")
-    #cv2.waitKey(0)  # Wait indefinitely until a key is pressed
-
-    # Optionally save the image
-    mirrored_img = cv2.flip(img,1)
-    save_image(mirrored_img[:idx * 1])
+    # Save or process the captured image
+    final_image = img[:idx]  # Use only the valid part of the image
+    mirrored_img = cv2.flip(final_image, 1)  # Flip if needed
+    save_image(mirrored_img)
 
     # Cleanup
     cam.Close()
