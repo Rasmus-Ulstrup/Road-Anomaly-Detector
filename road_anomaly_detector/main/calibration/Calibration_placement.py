@@ -7,7 +7,6 @@ import time
 
 # Constants
 TOLERANCE = 10  # Maximum distance considered to belong to the same line for clustering
-
 # Functions
 def save_image(image, save_path):
     """Save an image to the specified path."""
@@ -116,8 +115,8 @@ def main():
     fig, (ax_image, ax_text, ax_distances) = plt.subplots(3, 1, figsize=(10, 8))
 
     # Create instance of the LineScanCamera class with parameters
-    #if trigger != encoder it will be software trigger
-    camera = LineScanCamera(trigger='', exposure=200, frame_height=100, compression='png')
+    #if trigger != encoder it will be software triggerq
+    camera = LineScanCamera(trigger='', exposure=50, frame_height=100, compression='png')
 
     while True:
         # Create a synthetic test image with black lines
@@ -137,7 +136,7 @@ def main():
         middle_line_coordinates, distances_between_centers, edges = PlacementCalibration(image)
 
         # Update the plot with new data
-        update_plot(ax_image, ax_text, ax_distances, edges, middle_line_coordinates, distances_between_centers)
+        update_plot(ax_image, ax_text, ax_distances, image, middle_line_coordinates, distances_between_centers)
 
         # Draw the updated plot and pause to allow display to refresh
         plt.draw()
