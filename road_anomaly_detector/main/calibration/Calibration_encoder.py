@@ -47,6 +47,7 @@ def find_paper_contour(image, lower=170, upper=255, blurEn=True, morphEn=True):
         morph = thresh
 
     contours, _ = cv2.findContours(morph, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    display_image(thresh)
     
     if not contours:
         raise ValueError("No contours found in the image.")
@@ -128,36 +129,37 @@ def main():
         }
 
         cam = camProbities(focal=8.5, WD=WD, CamSpecs=cam_specs)
-        initial_resolution = cam.calculateEncoderResolution()
+        #initial_resolution = cam.calculateEncoderResolution() * 8 # times 8 because we have
+        initial_resolution = 7535
+        # 2 rising edge channels and pulse every 4 encode tick.
 
         print(f"Initial resolution: {initial_resolution}")
         input("Press Enter to start the paper calibration scheme...")
 
         spartial_res_1m = 1 / (cam.getSpartial() / 1000) # 1 m / spartial_res
         #print(cam.getSpartial() / 1000)
-        #camera = LineScanCamera(trigger='encoder', exposure=10, frame_height=spartial_res_1m, compression='png')
+        #camera = LineScanCamera(trigger='encoder', exposure=7, frame_height=spartial_res_1m, compression='png')
 
         a3_height_mm, a3_width_mm = 420*2, 297
 
         while True:
-            image = load_image("road_anomaly_detector/main/calibration/enoder_test_1.png")
             #image = camera.capture_image()
-
-            # Display image
-            print("picture taken...")
-            #display_image(image)
-            #save_path = f'road_anomaly_detector/main/calibration/enoder_test_3.png'  # Modify this path as needed
-            #save_image(image, save_path)
+            image = load_image("road_anomaly_detector/main/calibration/enoder_test_1.png")
+            print("Picture taken...")
 
             height_px, width_px, _ = paper_size(image, lower=235, dispay=True, blurEn=False, morphEn=False)
 
             height_mm = height_px * cam.getSpartial()
             width_mm = width_px * cam.getSpartial()
 
-            error_height = (abs(height_mm - a3_height_mm) / a3_height_mm) * 100
-            error_width = (abs(width_mm - a3_width_mm) / a3_width_mm) * 100
+            # Calculate errors in percentage for height and width
+            error_height = (height_mm - a3_height_mm) / a3_height_mm * 100
+            error_width = (width_mm - a3_width_mm) / a3_width_mm * 100
 
-            new_resolution = initial_resolution + (initial_resolution * error_height / 100)
+            # Adjust resolution based on the percentage error (can be positive or negative)
+            new_resolution = initial_resolution * (1 - error_height / 100)
+            
+            # Update the resolution
             initial_resolution = new_resolution
 
             print(f"\nPixels: {height_px} x {width_px}")
@@ -167,9 +169,7 @@ def main():
             print(f"Suggested new resolution: {new_resolution:.2f}\n")
 
             if input("Type 'q' to quit, or any other key to recalibrate: ").lower() == 'q':
-                # camera.cleanup()
                 break
-
     except Exception as e:
         print(f"An error occurred: {e}")
 
