@@ -68,6 +68,14 @@ for page in range(num_pages):
     # Paste the image slice in the center of the canvas
     pdf_page.paste(pil_image, (margin_px, margin_px))
 
+    # Draw the indicator lines at the inner edges of the margins
+    line_thickness_px = int(1 * pixels_per_mm)  # Line thickness for indicator lines
+    for y in range(canvas_height_px):
+        # Left margin indicator line
+        pdf_page.putpixel((margin_px - line_thickness_px // 2, y), 0)  
+        # Right margin indicator line
+        pdf_page.putpixel((canvas_width_px - margin_px + line_thickness_px // 2 - 1, y), 0)
+
     # Append this page to the list with the correct DPI
     pages.append(pdf_page)
 
@@ -75,3 +83,8 @@ for page in range(num_pages):
 pages[0].save("road_anomaly_detector/main/calibration/print_of_pattern.pdf", save_all=True, append_images=pages[1:], dpi=(dpi, dpi))
 
 print(f"Multi-page PDF saved as 'pattern_output_multi_page.pdf' with {num_pages} pages.")
+
+
+#road_anomaly_detector/main/calibration/print_of_pattern.pdf
+
+#road_anomaly_detector/main/calibration/raw_pattern.png
