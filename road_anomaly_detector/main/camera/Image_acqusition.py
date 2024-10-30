@@ -132,7 +132,7 @@ class LineScanCamera:
         cv2.imshow('Linescan View', mirrored_img)
         print("Press a key to close....")
         cv2.waitKey(0)  # Wait indefinitely until a key is pressed
-
+ 
     def save_image(self):
         self.setup_output_folder()
         # Logic to handle file naming if the image already exists
