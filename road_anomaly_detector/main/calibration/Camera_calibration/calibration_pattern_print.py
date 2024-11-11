@@ -4,11 +4,11 @@ from PIL import Image
 # Define dimensions in millimeters and desired DPI
 line_spacing = 50 #mm
 line_width = 1 #mm
-height_mm, width_mm = 100+line_width, 1560  # Pattern dimensions in mm
+height_mm, width_mm = 200, 1560  # Pattern dimensions in mm
 dpi = 300  # Print quality
 
 # Page size selection (A4 or A3)
-page_height_mm, page_width_mm = 210, 297  # A4 in mm (change to 297, 420 for A3)
+page_height_mm, page_width_mm = 297, 420  # A4 in mm (change to 297, 420 for A3)
 margin_mm = 5  # Define margin in millimeters
 
 # Calculate pixels per mm and convert dimensions to pixels
