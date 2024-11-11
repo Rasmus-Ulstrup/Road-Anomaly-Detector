@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from road_anomaly_detector.main.calibration.camera import camProbities
+from road_anomaly_detector.main.calibration.Encoder.camera import camProbities
 from road_anomaly_detector.main.camera.Image_acqusition import LineScanCamera
 
 def load_image(filepath):
