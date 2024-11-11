@@ -34,10 +34,10 @@ def load_crack_segmentation_dataset(image_dir, mask_dir):
     return dataset.map(load_image)
 
 # Directories for images and masks (update with actual paths)
-train_images_dir = r"C:/Users/bjs/Downloads/crack_segmentation_dataset/crack_segmentation_dataset/train/images"
-train_masks_dir = r"C:/Users/bjs/Downloads/crack_segmentation_dataset/crack_segmentation_dataset/train/masks"
-eval_images_dir = r"C:/Users/bjs/Downloads/crack_segmentation_dataset/crack_segmentation_dataset/test/images"
-eval_masks_dir = r"C:/Users/bjs/Downloads/crack_segmentation_dataset/crack_segmentation_dataset/test/masks"
+train_images_dir = os.path.expanduser(r"~/Documents/Training_data/crack_segmentation_dataset/crack_segmentation_dataset/train/images")
+train_masks_dir = os.path.expanduser(r"~/Documents/Training_data/crack_segmentation_dataset/crack_segmentation_dataset/train/masks")
+eval_images_dir = os.path.expanduser(r"~/Documents/Training_data/crack_segmentation_dataset/crack_segmentation_dataset/test/images")
+eval_masks_dir = os.path.expanduser(r"~/Documents/Training_data/crack_segmentation_dataset/crack_segmentation_dataset/test/masks")
 
 train_ds = load_crack_segmentation_dataset(train_images_dir, train_masks_dir)
 eval_ds = load_crack_segmentation_dataset(eval_images_dir, eval_masks_dir)
@@ -54,7 +54,7 @@ def preprocess_crack_segmentation(inputs):
     outputs = inputs.map(lambda image, mask: unpackage(image, mask))
     
     # Apply resizing and batching
-    outputs = outputs.map(keras_cv.layers.Resizing(height=512, width=512))
+    outputs = outputs.map(keras_cv.layers.Resizing(height=448, width=448))
     outputs = outputs.batch(4, drop_remainder=True)
     
     return outputs

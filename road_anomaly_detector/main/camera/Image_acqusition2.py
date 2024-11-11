@@ -139,9 +139,6 @@ class LineScanCamera:
         # Convert the list of captured lines into a NumPy array
         self.img = np.vstack(image_list)
 
-        # Return the valid part of the image, now fully captured and stacked
-        return self.img
-
     def wait_for_stop_signal(self):
         input()  # Wait for user to press ENTER
         self.stop_capture = True  # Set flag to stop the capture
@@ -170,15 +167,15 @@ class LineScanCamera:
 
 def main():
     # Create instance of the LineScanCamera class
-    camera = LineScanCamera(frame_height=1557, exposure=15, trigger='encoder', compression='png')
+    camera = LineScanCamera(frame_height=1557*5, exposure=10, trigger='encoder', compression='png')
 
     #Set length mode:
     #camera.image_length_mode()
     
     # Capture and display the image
-    #camera.capture_image()
+    camera.capture_image()
 
-    camera.capture_image_dynamic()
+    #camera.capture_image_dynamic()
     #camera.show_image()  # Optional: Display the image
     camera.save_image()
     

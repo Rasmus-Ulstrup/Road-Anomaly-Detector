@@ -7,7 +7,7 @@ from tkinter.filedialog import askdirectory
 import os
 # Constants
 SCANLINE_HEIGHT = 1
-VIRTUAL_FRAME_HEIGHT = 1000 # 1 meter
+VIRTUAL_FRAME_HEIGHT = 10000 # 1 meter
 
 # # User input for image length in meters
 # try:
@@ -47,7 +47,7 @@ cam.Height.Value = SCANLINE_HEIGHT
 cam.Width.Value = cam.Width.Max
 cam.PixelFormat.Value = "Mono8"  # Set to monochrome format
 cam.Gain.Value = 1
-cam.ExposureTime.Value = 20
+cam.ExposureTime.Value = 10
 
 # Enable hardware trigger
 cam.TriggerSelector.Value = "LineStart"
@@ -81,7 +81,7 @@ for idx in range(VIRTUAL_FRAME_HEIGHT // SCANLINE_HEIGHT):
 
 mirrored_img = cv2.flip(img,1)
 # Display the resulting frame
-cv2.imshow('Linescan View', mirrored_img)
+cv2.imwrite('Linescan_View.png', mirrored_img)
 print("Press a key to close....")
 cv2.waitKey(0)  # Wait indefinitely until a key is pressed
 
