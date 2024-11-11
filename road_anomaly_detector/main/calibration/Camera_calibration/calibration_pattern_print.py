@@ -2,9 +2,9 @@ import numpy as np
 from PIL import Image
 
 # Define dimensions in millimeters and desired DPI
-line_spacing = 50 #mm
-line_width = 1 #mm
-height_mm, width_mm = 100+line_width, 1560  # Pattern dimensions in mm
+line_spacing = 50  # mm
+line_width = 1  # mm
+height_mm, width_mm = 100 + line_width, 1560  # Pattern dimensions in mm
 dpi = 300  # Print quality
 
 # Page size selection (A4 or A3)
@@ -24,16 +24,20 @@ margin_px = int(margin_mm * pixels_per_mm)
 # Calculate number of pages needed to cover the width
 num_pages = int(np.ceil(width_px / page_width_px))
 
-# Create the image with the pattern
-image = np.ones((height_px, width_px), dtype=np.uint8) * 255  # White background
+# Define the padding in mm and convert to pixels
+padding_mm = 18  # Amount of white space to add below
+padding_px = int(padding_mm * pixels_per_mm)
+
+# Create the image with the pattern and add padding at the bottom
+image = np.ones((height_px + padding_px, width_px), dtype=np.uint8) * 255  # White background
 line_spacing_px = int(line_spacing * pixels_per_mm)  # Spacing for x
 line_width_px = int(line_width * pixels_per_mm)  # Line width for x
 
-# Draw vertical and diagonal lines
+# Draw vertical and diagonal lines, leaving padding at the bottom
 for x in range(0, width_px - line_spacing_px, line_spacing_px):
     # Draw the vertical line centered within the x
     start_x = x + (line_spacing_px - line_width_px) // 2
-    image[:, start_x:start_x + line_width_px] = 0  # Vertical line
+    image[:height_px, start_x:start_x + line_width_px] = 0  # Vertical line
 
     # Only draw a diagonal line if it's not the last interval
     if x + 2 * line_spacing_px <= width_px:
@@ -64,7 +68,7 @@ for page in range(num_pages):
 
     # Create a larger canvas for A4 or A3 with margin
     canvas_width_px = page_width_px + 2 * margin_px
-    canvas_height_px = height_px + 2 * margin_px
+    canvas_height_px = height_px + padding_px + 2 * margin_px
     pdf_page = Image.new("L", (canvas_width_px, canvas_height_px), "white")
     
     # Paste the image slice in the center of the canvas
@@ -85,8 +89,3 @@ for page in range(num_pages):
 pages[0].save("road_anomaly_detector/main/calibration/Camera_calibration/print_of_pattern.pdf", save_all=True, append_images=pages[1:], dpi=(dpi, dpi))
 
 print(f"Multi-page PDF saved as 'print_of_pattern.pdf' with {num_pages} pages.")
-
-
-#road_anomaly_detector/main/calibration/print_of_pattern.pdf
-
-#road_anomaly_detector/main/calibration/raw_pattern.png
