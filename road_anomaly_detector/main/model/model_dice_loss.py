@@ -43,6 +43,7 @@ train_ds = load_crack_segmentation_dataset(train_images_dir, train_masks_dir)
 eval_ds = load_crack_segmentation_dataset(eval_images_dir, eval_masks_dir)
 
 # Step 3: Preprocessing the Data
+<<<<<<< HEAD
 def preprocess_crack_segmentation(inputs):
     def unpackage(image, mask):
         return {
@@ -58,6 +59,17 @@ def preprocess_crack_segmentation(inputs):
     outputs = outputs.batch(4, drop_remainder=True)
     
     return outputs
+=======
+def preprocess_crack_segmentation(dataset):
+    def resize_function(image, mask):
+        # Resize both image and mask
+        image_resized = keras_cv.layers.Resizing(height=512, width=512)(image)
+        mask_resized = keras_cv.layers.Resizing(height=512, width=512)(mask)
+        return image_resized, mask_resized
+
+    dataset = dataset.map(resize_function)
+    return dataset
+>>>>>>> 793c1a3a57a5b961e3ef0420b2ad2746e00d08de
 
 train_ds = preprocess_crack_segmentation(train_ds)
 eval_ds = preprocess_crack_segmentation(eval_ds)
@@ -80,7 +92,7 @@ BATCH_SIZE = 4
 INITIAL_LR = 0.007 * BATCH_SIZE / 16
 EPOCHS = 10  # Adjust as needed
 NUM_CLASSES = 2  # Since you have cracks and background (2 classes)
-learning_rate = keras.optimizers.schedules.CosineDecay(
+learning_rate = tf.keras.optimizers.schedules.CosineDecay(
     INITIAL_LR,
     decay_steps=EPOCHS * 2124,
 )
