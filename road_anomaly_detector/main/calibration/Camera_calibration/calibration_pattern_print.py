@@ -2,7 +2,9 @@ import numpy as np
 from PIL import Image
 
 # Define dimensions in millimeters and desired DPI
-height_mm, width_mm = 100, 1560  # Pattern dimensions in mm
+line_spacing = 50 #mm
+line_width = 1 #mm
+height_mm, width_mm = 100+line_width, 1560  # Pattern dimensions in mm
 dpi = 300  # Print quality
 
 # Page size selection (A4 or A3)
@@ -24,12 +26,12 @@ num_pages = int(np.ceil(width_px / page_width_px))
 
 # Create the image with the pattern
 image = np.ones((height_px, width_px), dtype=np.uint8) * 255  # White background
-line_spacing_px = int(40 * pixels_per_mm)  # Spacing for 40 mm
-line_width_px = int(2 * pixels_per_mm)  # Line width for 2 mm
+line_spacing_px = int(line_spacing * pixels_per_mm)  # Spacing for x
+line_width_px = int(line_width * pixels_per_mm)  # Line width for x
 
 # Draw vertical and diagonal lines
 for x in range(0, width_px - line_spacing_px, line_spacing_px):
-    # Draw the vertical line centered within the 40 mm interval
+    # Draw the vertical line centered within the x
     start_x = x + (line_spacing_px - line_width_px) // 2
     image[:, start_x:start_x + line_width_px] = 0  # Vertical line
 
@@ -46,7 +48,7 @@ for x in range(0, width_px - line_spacing_px, line_spacing_px):
 
 # Save the full pattern as a single PNG
 raw_pattern_image = Image.fromarray(image)
-raw_pattern_image.save("road_anomaly_detector/main/calibration/raw_pattern.png", dpi=(dpi, dpi))
+raw_pattern_image.save("road_anomaly_detector/main/calibration/Camera_calibration/raw_pattern.png", dpi=(dpi, dpi))
 
 # Create an empty list to store the pages for the PDF
 pages = []
@@ -80,9 +82,9 @@ for page in range(num_pages):
     pages.append(pdf_page)
 
 # Save all slices as individual pages in a single PDF file
-pages[0].save("road_anomaly_detector/main/calibration/print_of_pattern.pdf", save_all=True, append_images=pages[1:], dpi=(dpi, dpi))
+pages[0].save("road_anomaly_detector/main/calibration/Camera_calibration/print_of_pattern.pdf", save_all=True, append_images=pages[1:], dpi=(dpi, dpi))
 
-print(f"Multi-page PDF saved as 'pattern_output_multi_page.pdf' with {num_pages} pages.")
+print(f"Multi-page PDF saved as 'print_of_pattern.pdf' with {num_pages} pages.")
 
 
 #road_anomaly_detector/main/calibration/print_of_pattern.pdf
