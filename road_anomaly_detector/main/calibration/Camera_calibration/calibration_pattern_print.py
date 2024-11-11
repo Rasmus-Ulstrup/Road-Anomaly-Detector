@@ -2,15 +2,9 @@ import numpy as np
 from PIL import Image
 
 # Define dimensions in millimeters and desired DPI
-<<<<<<< HEAD
-line_spacing = 50  # mm
-line_width = 1  # mm
-height_mm, width_mm = 100 + line_width, 1560  # Pattern dimensions in mm
-=======
 line_spacing = 50 #mm
 line_width = 1 #mm
 height_mm, width_mm = 200, 1560  # Pattern dimensions in mm
->>>>>>> c3a7aeda57c5b3b6e7a5fca8a818994236b13a7d
 dpi = 300  # Print quality
 
 # Page size selection (A4 or A3)
