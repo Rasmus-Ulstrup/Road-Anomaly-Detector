@@ -3,15 +3,17 @@ channels:
   - defaults
   - conda-forge
   - pytorch
+  - nvidia
 
 dependencies:
   - python=3.10  # Specifying Python version 3.10 or later to allow for flexibility
   - pip
-  
-  # PyTorch latest stable CPU version
+
+  # PyTorch latest stable GPU version with CUDA 12.4
   - pytorch
   - torchvision
   - torchaudio
+  - pytorch-cuda=12.4
 
   # Additional dependencies
   - numpy
@@ -20,6 +22,8 @@ dependencies:
   - scipy  # Useful for scientific computations
   - pandas  # Useful for data handling
   - scikit-learn  # Useful for machine learning models
+  - keras  # Added Keras for deep learning
+  - pillow  # Added Pillow for image processing
 
   - pip:
     - black

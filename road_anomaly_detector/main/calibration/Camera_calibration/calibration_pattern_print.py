@@ -25,8 +25,9 @@ margin_px = int(margin_mm * pixels_per_mm)
 num_pages = int(np.ceil(width_px / page_width_px))
 
 # Define the padding in mm and convert to pixels
-padding_mm = 18  # Amount of white space to add below
+padding_mm = 36# Amount of white space to add below
 padding_px = int(padding_mm * pixels_per_mm)
+print(padding_px)
 
 # Create the image with the pattern and add padding at the bottom
 image = np.ones((height_px + padding_px, width_px), dtype=np.uint8) * 255  # White background

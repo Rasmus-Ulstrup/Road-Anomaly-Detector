@@ -34,15 +34,32 @@ def load_crack_segmentation_dataset(image_dir, mask_dir):
     return dataset.map(load_image)
 
 # Directories for images and masks (update with actual paths)
-train_images_dir = r"C:/Users/bjs/Downloads/crack_segmentation_dataset/crack_segmentation_dataset/train/images"
-train_masks_dir = r"C:/Users/bjs/Downloads/crack_segmentation_dataset/crack_segmentation_dataset/train/masks"
-eval_images_dir = r"C:/Users/bjs/Downloads/crack_segmentation_dataset/crack_segmentation_dataset/test/images"
-eval_masks_dir = r"C:/Users/bjs/Downloads/crack_segmentation_dataset/crack_segmentation_dataset/test/masks"
+train_images_dir = os.path.expanduser(r"~/Documents/Training_data/crack_segmentation_dataset/crack_segmentation_dataset/train/images")
+train_masks_dir = os.path.expanduser(r"~/Documents/Training_data/crack_segmentation_dataset/crack_segmentation_dataset/train/masks")
+eval_images_dir = os.path.expanduser(r"~/Documents/Training_data/crack_segmentation_dataset/crack_segmentation_dataset/test/images")
+eval_masks_dir = os.path.expanduser(r"~/Documents/Training_data/crack_segmentation_dataset/crack_segmentation_dataset/test/masks")
 
 train_ds = load_crack_segmentation_dataset(train_images_dir, train_masks_dir)
 eval_ds = load_crack_segmentation_dataset(eval_images_dir, eval_masks_dir)
 
 # Step 3: Preprocessing the Data
+<<<<<<< HEAD
+def preprocess_crack_segmentation(inputs):
+    def unpackage(image, mask):
+        return {
+            "images": image,
+            "segmentation_masks": mask,
+        }
+
+    # Map over the dataset and apply unpackage function
+    outputs = inputs.map(lambda image, mask: unpackage(image, mask))
+    
+    # Apply resizing and batching
+    outputs = outputs.map(keras_cv.layers.Resizing(height=448, width=448))
+    outputs = outputs.batch(4, drop_remainder=True)
+    
+    return outputs
+=======
 def preprocess_crack_segmentation(dataset):
     def resize_function(image, mask):
         # Resize both image and mask
@@ -52,6 +69,7 @@ def preprocess_crack_segmentation(dataset):
 
     dataset = dataset.map(resize_function)
     return dataset
+>>>>>>> 793c1a3a57a5b961e3ef0420b2ad2746e00d08de
 
 train_ds = preprocess_crack_segmentation(train_ds)
 eval_ds = preprocess_crack_segmentation(eval_ds)

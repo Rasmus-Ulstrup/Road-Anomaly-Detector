@@ -4,14 +4,17 @@ import cv2
 from tkinter import Tk, TclError, filedialog
 import os
 import threading
-
+import statistics
+from collections import deque
 class LineScanCamera:
-    def __init__(self, frame_height=1557, exposure=20, trigger='encoder', compression='png'):
+    def __init__(self, frame_height=1557, exposure=20, trigger='encoder', compression='png', max_capture_meters=50):
         self.VIRTUAL_FRAME_HEIGHT = round(frame_height)  # Set from parameter
         self.trigger = trigger
         self.compression = compression
         self.exposure = exposure
 
+
+        self.MAX_FRAME_HEIGHT = int(max_capture_meters * frame_height)  # Pre-allocate for multiple meters
         # Initialize camera
         self.cam = self.initialize_camera()
         
@@ -24,6 +27,8 @@ class LineScanCamera:
 
         # Flag to stop capture loop
         self.stop_capture = False
+        self.current_row = 0  # Keep track of current row being filled
+
     def image_length_mode(self):
         try:
             print("!Remeber in this mode, variable frame_height is spatial resulotion for 1 meter!")
@@ -70,7 +75,7 @@ class LineScanCamera:
         # Enable trigger based on the parameter
         if self.trigger == 'encoder':
             self.cam.TriggerSelector.Value = "LineStart"
-            self.cam.TriggerSource.Value = "Line1"
+            self.cam.TriggerSource.Value = "Line2"
             self.cam.TriggerMode.Value = "On"
             self.cam.TriggerActivation.Value = "RisingEdge"
         else:
@@ -92,6 +97,8 @@ class LineScanCamera:
                 if result.GrabSucceeded():
                     with result.GetArrayZeroCopy() as out_array:
                         self.img[idx] = out_array
+                        print(statistics.median(self.img[idx]))
+                        print(np.median)
                 else:
                     self.img[idx] = self.missing_line
                     print(f"Missing line at index {idx}")
@@ -107,20 +114,95 @@ class LineScanCamera:
 
         print("Capturing dynamic image. Press ENTER to stop capturing and save the image.")
         
+        # Create an empty list to store scan lines
+        image_list = []
+
         # Capture loop
         while not self.stop_capture:
+            if self.current_row >= self.MAX_FRAME_HEIGHT:
+                print("Reached maximum capture height.")
+                break
+
             with self.cam.RetrieveResult(20000) as result:
                 if result.GrabSucceeded():
-                    with result.GetArrayZeroCopy() as out_array:
-                        # Append the new scanline to the existing image
-                        self.img = np.vstack((self.img, out_array))
+                    # Use GetArray() to safely retrieve the scanline data
+                    out_array = result.GetArray()
+                    # Add the scanline to the list
+                    image_list.append(out_array)
                 else:
-                    # Append a missing line if the grab failed
-                    self.img = np.vstack((self.img, self.missing_line))
-                    print(f"Missing line at index {self.img.shape[0]}")
+                    # If grab failed, use the placeholder missing line
+                    image_list.append(self.missing_line)
+                    print(f"Missing line at row {self.current_row}")
+
+                self.current_row += 1  # Move to the next row
 
         self.cam.StopGrabbing()
         input_thread.join()  # Ensure input thread completes
+
+        # Convert the list of captured lines into a NumPy array
+        self.img = np.vstack(image_list)
+
+        # Return the valid part of the image, now fully captured and stacked
+        return self.img
+    def capture_image_dynamic_auto(self, auto):
+        self.cam.StartGrabbing()
+
+        # Create a separate thread to listen for user input
+        input_thread = threading.Thread(target=self.wait_for_stop_signal)
+        input_thread.start()
+
+        print("Capturing dynamic image. Press ENTER to stop capturing and save the image.")
+        
+        # Create an empty list to store scan lines
+        
+        brightness_buffer  = deque(maxlen=250)
+        image_list= []
+        images_processed = 0  # Counter for processed images
+        # Capture loop
+        while not self.stop_capture:
+            if self.current_row >= self.MAX_FRAME_HEIGHT:
+                print("Reached maximum capture height.")
+                break
+
+            with self.cam.RetrieveResult(20000) as result:
+                if result.GrabSucceeded():
+                    # Use GetArray() to safely retrieve the scanline data
+                    out_array = result.GetArray()
+                    image_list.append(out_array)
+                    brightness_buffer.append(out_array)
+                    images_processed += 1  # Increment the processed images count
+                    if images_processed % 250 == 0:
+                        # Efficiently compute the median brightness across the buffer
+                        stacked_images = np.array(brightness_buffer)
+                        median_brightness = np.median(stacked_images)
+                        print(f"Median brightness of last 50 images: {median_brightness}")
+                        print(f"Exposure Time is set to: {self.cam.ExposureTime.Value}")
+
+                        # # Adjust gain or exposure based on median brightness
+                        # if median_brightness < 50:  # Arbitrary low brightness threshold
+                        #     new_exposure_time = self.cam.ExposureTime.Value + 1
+                        # elif median_brightness > 50:  # Arbitrary high brightness threshold
+                        #     new_exposure_time = self.cam.ExposureTime.Value - 1
+                        # else:
+                        #     new_exposure_time = self.cam.ExposureTime.Value
+                        # new_exposure_time = max(1.57, min(new_exposure_time, 10000))
+                        # self.cam.ExposureTime.Value = new_exposure_time
+
+                else:
+                    # If grab failed, use the placeholder missing line
+                    image_list.append(self.missing_line)
+                    brightness_buffer.append(self.missing_line)
+                    print(f"Missing line at row {self.current_row}")
+
+                self.current_row += 1  # Move to the next row
+
+        self.cam.StopGrabbing()
+        input_thread.join()  # Ensure input thread completes
+
+        # Convert the list of captured lines into a NumPy array
+        self.img = np.vstack(image_list)
+
+        # Return the valid part of the image, now fully captured and stacked
         return self.img
 
     def wait_for_stop_signal(self):
@@ -128,11 +210,11 @@ class LineScanCamera:
         self.stop_capture = True  # Set flag to stop the capture
         
     def show_image(self):
-        mirrored_img = cv2.flip(self.img, 1)
-        cv2.imshow('Linescan View', mirrored_img)
+        self.img = cv2.flip(self.img,1)
+        cv2.imshow('Linescan View', self.img)
         print("Press a key to close....")
         cv2.waitKey(0)  # Wait indefinitely until a key is pressed
- 
+
     def save_image(self):
         self.setup_output_folder()
         # Logic to handle file naming if the image already exists
@@ -141,6 +223,7 @@ class LineScanCamera:
         while os.path.exists(self.output_path):
             count += 1
             self.output_path = f"{base_path}{count}.{self.compression}"
+        self.img = cv2.flip(self.img,1)
         cv2.imwrite(self.output_path, self.img)
         print(f"Image saved at {self.output_path}")
 
@@ -150,15 +233,15 @@ class LineScanCamera:
 
 def main():
     # Create instance of the LineScanCamera class
-    camera = LineScanCamera(frame_height=1557, trigger='encoder', compression='png')
+    camera = LineScanCamera(frame_height=1557, exposure=10, trigger='encoder', compression='png')
 
     #Set length mode:
     #camera.image_length_mode()
     
     # Capture and display the image
-    #camera.capture_image()
-
-    camera.capture_image_dynamic()
+    #camera.capture_image(True)
+    #camera.capture_image_dynamic()
+    camera.capture_image_dynamic_auto(True)
     #camera.show_image()  # Optional: Display the image
     camera.save_image()
     
