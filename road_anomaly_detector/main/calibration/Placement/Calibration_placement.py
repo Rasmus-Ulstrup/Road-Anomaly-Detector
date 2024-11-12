@@ -158,7 +158,7 @@ def update_plot(ax_image, ax_text, ax_distances, edges, middle_line_coordinates,
 
 
 def main():
-    """Main function to handle the placement calibration loop."""
+    """Main function to handle the placement calibration loop.."""
     print("Starting dynamic placement calibration, press any key to exit...")
 
     plt.ion()
