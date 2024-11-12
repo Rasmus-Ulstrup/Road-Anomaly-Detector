@@ -75,7 +75,7 @@ class LineScanCamera:
         # Enable trigger based on the parameter
         if self.trigger == 'encoder':
             self.cam.TriggerSelector.Value = "LineStart"
-            self.cam.TriggerSource.Value = "Line1"
+            self.cam.TriggerSource.Value = "Line2"
             self.cam.TriggerMode.Value = "On"
             self.cam.TriggerActivation.Value = "RisingEdge"
         else:
