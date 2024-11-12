@@ -88,7 +88,7 @@ class LineScanCamera:
         print("TriggerMode:", self.cam.TriggerMode.Value)
         print("AcquisitionMode:", self.cam.AcquisitionMode.Value)
 
-    def capture_image(self, auto):
+    def capture_image(self):
         self.cam.StartGrabbing()
 
         # Capture one frame

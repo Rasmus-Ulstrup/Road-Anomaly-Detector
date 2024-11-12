@@ -64,13 +64,13 @@ def PlacementCalibration(image):
     """Perform placement calibration using Canny and Hough Transform with subpixel interpolation."""
     
     # Step 1: Edge detection using Canny
-    low_threshold = 50
+    low_threshold = 150
     high_threshold = 180
     edges = cv2.Canny(image, low_threshold, high_threshold)
     
     # Step 2: Hough Line Transform on Canny edges
     threshold = 50
-    min_line_length = 10
+    min_line_length = 50
     max_line_gap = 20
     lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi / 180, threshold=threshold,
                             minLineLength=min_line_length, maxLineGap=max_line_gap)
@@ -121,10 +121,7 @@ def PlacementCalibration(image):
 
     # Cluster subpixel centers to find distinct line centers
     line_centers = find_line_centers(np.array(subpixel_centers))
-    print(subpixel_centers)
     distances_between_centers = np.diff(line_centers)
-    print(line_centers)
-    print(distances_between_centers)
 
     # Calculate middle line coordinates
     middle_line_coordinates = calculate_middle_line(line_centers)
@@ -167,16 +164,16 @@ def main():
     plt.ion()
     fig, (ax_image, ax_text, ax_distances) = plt.subplots(3, 1, figsize=(10, 8))
 
-    #camera = LineScanCamera(trigger='', exposure=50, frame_height=100, compression='png')
+    camera = LineScanCamera(trigger='', exposure=25, frame_height=100, compression='png')
 
-    image = cv2.imread('road_anomaly_detector/main/calibration/Placement/testimage.png', cv2.IMREAD_GRAYSCALE)
-    if image is not None:
-        print("Image loaded successfully")
-    else:
-        print("Image loading failed")
+    #image = cv2.imread('road_anomaly_detector/main/calibration/Placement/testimage.png', cv2.IMREAD_GRAYSCALE)
+    # if image is not None:
+    #     print("Image loaded successfully")
+    # else:
+    #     print("Image loading failed")
 
     while True:
-        #image = camera.capture_image()
+        image = camera.capture_image()
         
 
         # Perform placement calibration
