@@ -7,12 +7,12 @@ import threading
 import statistics
 from collections import deque
 class LineScanCamera:
-    def __init__(self, frame_height=1557, exposure=20, trigger='encoder', compression='png', max_capture_meters=50):
+    def __init__(self, frame_height=1557, exposure=20, trigger='encoder', compression='png', max_capture_meters=50, gamma=1):
         self.VIRTUAL_FRAME_HEIGHT = round(frame_height)  # Set from parameter
         self.trigger = trigger
         self.compression = compression
         self.exposure = exposure
-
+        self.gamma = gamma
 
         self.MAX_FRAME_HEIGHT = int(max_capture_meters * frame_height)  # Pre-allocate for multiple meters
         # Initialize camera
@@ -73,6 +73,7 @@ class LineScanCamera:
         self.cam.ExposureTime.Value = self.exposure
         self.cam.BslShadingCorrectionSelector.Value = "PRNU"
         self.cam.BslShadingCorrectionMode.Value = "User"
+        self.cam.gamme.Value = self.gamma
         
         # Enable trigger based on the parameter
         if self.trigger == 'encoder':

@@ -3,137 +3,53 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 from road_anomaly_detector.main.camera.Image_acqusition import LineScanCamera
+from road_anomaly_detector.main.calibration.Camera_calibration.find_image_coords import find_line_x
 import time
 
 # Constants
 TOLERANCE = 10  # Maximum distance considered to belong to the same line for clustering
 
 # Functions
-def save_image(image, save_path):
-    """Save an image to the specified path."""
-    success = cv2.imwrite(save_path, image)
-    if not success:
-        raise IOError(f"Error: Unable to save image to {save_path}")
-    print(f"Image saved successfully at {save_path}")
 
-
-def find_line_centers(coordinates, tolerance=TOLERANCE):
-    """Clusters coordinates by proximity and returns the centers of the lines."""
-    if coordinates.size == 0:
-        return np.array([])  # Return an empty array if there are no coordinates
+def PlacementCalibration(image, average_if_even=True):
+    # Retrieve x-coordinates (example function, should be defined in your code)
+    x_coords = find_line_x(image)
     
-    unique_x_coords = np.unique(coordinates)
-    
-    if unique_x_coords.size == 0:
-        return np.array([])  # Return an empty array if no unique coordinates are found
+    # Sort the x-coordinates to ensure distance calculation is meaningful
+    x_coords_sorted = sorted(x_coords)
 
-    line_centers = []
-    current_cluster = [unique_x_coords[0]]
-    
-    for coord in unique_x_coords[1:]:
-        if coord - current_cluster[-1] <= tolerance:
-            current_cluster.append(coord)
-        else:
-            line_centers.append(np.mean(current_cluster))
-            current_cluster = [coord]
-
-    # Append the last cluster's center
-    if current_cluster:
-        line_centers.append(np.mean(current_cluster))
-
-    return np.array(line_centers)
-
-
-def calculate_middle_line(coordinates):
-    """Calculate the coordinates of the middle line based on line centers."""
-    if coordinates.size == 0:
-        print("Warning: No line centers detected.")
-        return np.array([])  # Return an empty array or some default value if no line centers are found
-
-    line_count = (coordinates.size - 1) / 2
-
-    if isinstance(line_count, float) and line_count > 1:
-        middle_coords = np.array([coordinates[int(np.floor(line_count))], coordinates[int(np.ceil(line_count))]])
+    # Find the middle value(s) of the sorted array
+    n = len(x_coords_sorted)
+    if n % 2 == 1:
+        # Odd length, single middle element
+        middle_value = x_coords_sorted[n // 2]
     else:
-        middle_coords = np.array([coordinates[int(line_count)]])
+        # Even length, choose based on preference
+        if average_if_even:
+            # Return the average of the two central elements
+            middle_value = (x_coords_sorted[n // 2 - 1] + x_coords_sorted[n // 2]) / 2
+        else:
+            # Return the two central elements as a tuple
+            middle_value = (x_coords_sorted[n // 2 - 1], x_coords_sorted[n // 2])
 
-    return middle_coords
-
-
-def PlacementCalibration(image):
-    """Perform placement calibration using Canny and Hough Transform with subpixel interpolation."""
+    # Calculate distances between consecutive x-coordinates
+    distances = np.diff(x_coords_sorted)
     
-    # Step 1: Edge detection using Canny
-    low_threshold = 150
-    high_threshold = 180
-    edges = cv2.Canny(image, low_threshold, high_threshold)
-    
-    # Step 2: Hough Line Transform on Canny edges
-    threshold = 50
-    min_line_length = 50
-    max_line_gap = 20
-    lines = cv2.HoughLinesP(edges, rho=1, theta=np.pi / 180, threshold=threshold,
-                            minLineLength=min_line_length, maxLineGap=max_line_gap)
-    
-    # Step 2.5: Visualize detected lines
-    line_image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    # print("Sorted x-coordinates:", np.array(x_coords_sorted))
+    # print("Distances between consecutive x-coordinates:", distances)
 
-    # Check if there are lines detected
-    if lines is not None:
-        # Determine the middle line's index in the sorted list of x-coordinates
-        x_coords = np.array([(line[0][0] + line[0][2]) // 2 for line in lines])  # Average x-coordinates of lines
-        sorted_indices = np.argsort(x_coords)
-        middle_index = sorted_indices[len(sorted_indices) // 2]  # Middle index in the sorted list
+    return np.array(x_coords_sorted), distances, np.array(middle_value)
 
-        # Draw each line, coloring the middle line in red and others in green
-        for i, line in enumerate(lines):
-            x1, y1, x2, y2 = line[0]
-            
-            # Draw the middle line in red and the rest in green
-            if i == middle_index:
-                cv2.line(line_image, (x1, y1), (x2, y2), (0, 0, 255), 2)  # Red for middle line
-            else:
-                cv2.line(line_image, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green for other lines
-
-    
-    # Step 3: Detect line centers with subpixel interpolation
-    subpixel_centers = []
-    if lines is not None:
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            
-            # Check if the line is vertical (or close to vertical)
-            if abs(x2 - x1) < 5:
-                # Extract a region around the line in the x-direction
-                region = image[min(y1, y2):max(y1, y2), max(0, x1 - 3):min(image.shape[1], x1 + 3)]
-                
-                # Compute the intensity profile in the x-direction by summing over y
-                x_profile = np.sum(region, axis=0)
-                
-                # Find the subpixel center in the x-direction using a weighted average
-                x_indices = np.arange(len(x_profile))
-                weighted_sum = np.sum(x_indices * x_profile)
-                sum_profile = np.sum(x_profile)
-                
-                if sum_profile > 0:
-                    subpixel_x = x1 + (weighted_sum / sum_profile - (len(x_profile) / 2))
-                    subpixel_centers.append(subpixel_x)
-
-    # Cluster subpixel centers to find distinct line centers
-    line_centers = find_line_centers(np.array(subpixel_centers))
-    distances_between_centers = np.diff(line_centers)
-
-    # Calculate middle line coordinates
-    middle_line_coordinates = calculate_middle_line(line_centers)
-
-    return middle_line_coordinates, distances_between_centers, edges, line_image
-
-
-def update_plot(ax_image, ax_text, ax_distances, edges, middle_line_coordinates, distances_between_centers):
+def update_plot(ax_image, ax_text, ax_distances, image, x_cross, middle_line_coordinates, distances_between_centers):
     """Update the Matplotlib plot with edge detection image, calculated results, and distances."""
+
+    y_positions = np.full_like(x_cross, image.shape[0] // 2)  # Middle row, adjust as needed
     ax_image.clear()
-    ax_image.imshow(edges, cmap='gray')
+    ax_image.imshow(image, cmap='gray')
     ax_image.set_title("Edge Detection")
+    ax_image.set_ylim([1000 - 100, 1100 + 100]) 
+    ax_image.scatter(x_cross, y_positions, color='lime', s=20, label="Interpolated Points")  # Overlay points
+    ax_image.vlines(x_cross, ymin=0, ymax=image.shape[0] - 1, color='lime', linewidth=1.5, label="Interpolated Lines")
     ax_image.axvline(x=1024, color='red', linestyle='--', linewidth=2)
 
     ax_text.clear()
@@ -164,30 +80,31 @@ def main():
     plt.ion()
     fig, (ax_image, ax_text, ax_distances) = plt.subplots(3, 1, figsize=(10, 8))
 
-    camera = LineScanCamera(trigger='', exposure=25, frame_height=100, compression='png')
+    #camera = LineScanCamera(trigger='', exposure=45, frame_height=2048, compression='png', gamma=4)
 
-    #image = cv2.imread('road_anomaly_detector/main/calibration/Placement/testimage.png', cv2.IMREAD_GRAYSCALE)
-    # if image is not None:
-    #     print("Image loaded successfully")
-    # else:
-    #     print("Image loading failed")
+    image = cv2.imread('road_anomaly_detector/main/calibration/Camera_calibration/test_image3.png', cv2.IMREAD_GRAYSCALE)
+    if image is not None:
+        print("Image loaded successfully")
+    else:
+        print("Image loading failed")
 
     while True:
-        image = camera.capture_image()
+        #image = camera.capture_image()
         
 
         # Perform placement calibration
-        middle_line_coordinates, distances_between_centers, edges, lineImage = PlacementCalibration(image)
+        x_coords, distances, middle = PlacementCalibration(image)
+        
 
         # Update the plot with new data
-        update_plot(ax_image, ax_text, ax_distances, lineImage, middle_line_coordinates, distances_between_centers)
+        update_plot(ax_image, ax_text, ax_distances, image, x_coords, middle, distances)
 
         plt.draw()
-        time.sleep(0.05)
+        time.sleep(0.1)
 
         if plt.waitforbuttonpress(timeout=0.1):
             print("Exiting placement calibration loop")
-            camera.cleanup()
+            #camera.cleanup()
             break
 
     plt.ioff()
