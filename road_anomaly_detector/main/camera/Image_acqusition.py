@@ -71,7 +71,9 @@ class LineScanCamera:
         self.cam.PixelFormat.Value = "Mono8"  # Set to monochrome format
         self.cam.Gain.Value = 1
         self.cam.ExposureTime.Value = self.exposure
-
+        self.cam.BslShadingCorrectionSelector.Value = "PRNU"
+        self.cam.BslShadingCorrectionMode.Value = "User"
+        
         # Enable trigger based on the parameter
         if self.trigger == 'encoder':
             self.cam.TriggerSelector.Value = "LineStart"
