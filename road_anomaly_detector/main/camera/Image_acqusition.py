@@ -73,7 +73,7 @@ class LineScanCamera:
         self.cam.ExposureTime.Value = self.exposure
         self.cam.BslShadingCorrectionSelector.Value = "PRNU"
         self.cam.BslShadingCorrectionMode.Value = "User"
-        self.cam.gamme.Value = self.gamma
+        self.cam.Gamma.Value = self.gamma
         
         # Enable trigger based on the parameter
         if self.trigger == 'encoder':
@@ -100,8 +100,7 @@ class LineScanCamera:
                 if result.GrabSucceeded():
                     with result.GetArrayZeroCopy() as out_array:
                         self.img[idx] = out_array
-                        print(statistics.median(self.img[idx]))
-                        print(np.median)
+                        #print(statistics.median(self.img[idx]))
                 else:
                     self.img[idx] = self.missing_line
                     print(f"Missing line at index {idx}")

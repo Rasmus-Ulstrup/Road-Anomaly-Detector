@@ -29,21 +29,23 @@ def find_line_x(image,threshold_value=100):
         #print(f"Cluster from x = {start_x} to x = {end_x}")
         y = mean_image[start_x - 3 : end_x + 4]
         x = range(0, len(y))
+        if len(y) > 5:
+            tck = interpolate.splrep(x, y, s=0, k=5) 
 
-        tck = interpolate.splrep(x, y, s=0, k=5) 
+            x_new = np.linspace(min(x), max(x), 100)
+            y_fit = interpolate.BSpline(*tck)(x_new)
+            
 
-        x_new = np.linspace(min(x), max(x), 100)
-        y_fit = interpolate.BSpline(*tck)(x_new)
-        
+            min_value = np.min(y_fit)
+            min_index = np.argmin(y_fit)
+            x_at_min = x_new[min_index]
 
-        min_value = np.min(y_fit)
-        min_index = np.argmin(y_fit)
-        x_at_min = x_new[min_index]
+            #print(f"The minimum value of y_fit is: {min_value}")
+            #print(f"This minimum value occurs at x = {x_at_min}")
 
-        #print(f"The minimum value of y_fit is: {min_value}")
-        #print(f"This minimum value occurs at x = {x_at_min}")
-
-        x_cross.append(x_at_min + start_x - 3)
+            x_cross.append(x_at_min + start_x - 3)
+        else:
+            x_cross.append(0)
 
         # plt.plot(x, y, 'ro', label="original")
         # plt.plot(x, y, 'b', label="linear interpolation")
