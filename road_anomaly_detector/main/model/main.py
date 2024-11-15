@@ -35,7 +35,7 @@ def main():
     train_parser.add_argument('--batch_size', type=int, default=4, help='Batch size')
     train_parser.add_argument('--patience', type=int, default=10, help='Patience for early stopping')
     train_parser.add_argument('--dataset_name', type=str, required=True, help="Dataset name")
-    train_parser.add_argument('--loss_function', type=str, default='dice', help="Loss function: 'dice', 'bce', etc.")
+    train_parser.add_argument('--loss_function', type=str, default='dice', help="Loss function: 'dice', 'bce', ce, focal")
 
     # Inference subparser
     inference_parser = subparsers.add_parser("inference", help="Run inference on a single image")

@@ -4,7 +4,8 @@ import torch.nn.functional as F
 class Trainer:
     def __init__(self, model, train_loader, val_loader, num_epochs=500, 
                  learning_rate=1e-3, patience=10, model_save_path="advanced_unet_segmentation_model.pth",
-                 loss_type="dice", **kwargs):  # Align argument name
+                 loss_type="dice", device=None, **kwargs):  # Align argument name
+        self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')  # Default to GPU if available
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
@@ -17,7 +18,7 @@ class Trainer:
         self.optimizer = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
 
         # Select loss function
-        self.loss_function = self.select_loss_function(loss_type, **kwargs)  # Use consistent name
+        self.loss_function = self.select_loss_function(loss_type, **kwargs)
         
         self.best_val_loss = float('inf')
         self.epochs_without_improvement = 0
@@ -28,7 +29,10 @@ class Trainer:
         if loss_type == "dice":
             return self.dice_loss
         elif loss_type == "bce":
-            return torch.nn.BCEWithLogitsLoss()
+            # Set alpha to 0.9 by default if it's not passed in kwargs
+            pos_weight = kwargs.get('pos_weight', 0.9)  # Default to 0.9
+            pos_weight_tensor = torch.tensor([pos_weight]).to(self.device)  # Move pos_weight to the correct device
+            return torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight_tensor)
         elif loss_type == "ce":
             return torch.nn.CrossEntropyLoss()
         elif loss_type == "focal":
@@ -72,17 +76,18 @@ class Trainer:
             self.model.train()
             train_loss = 0
             for images, masks in self.train_loader:
-                images, masks = images.cuda(), masks.cuda()
-                
+                # Move both images and masks to the correct device
+                images, masks = images.to(self.device), masks.to(self.device)
+                    
                 # Forward pass
                 outputs = self.model(images)
                 loss = self.loss_function(outputs, masks)
-                
+                    
                 # Backward and optimize
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-                
+                    
                 train_loss += loss.item()
             
             # Validation loop
@@ -90,7 +95,9 @@ class Trainer:
             with torch.no_grad():
                 val_loss = 0
                 for val_images, val_masks in self.val_loader:
-                    val_images, val_masks = val_images.cuda(), val_masks.cuda()
+                    # Move validation images and masks to the same device
+                    val_images, val_masks = val_images.to(self.device), val_masks.to(self.device)
+                    
                     val_outputs = self.model(val_images)
                     val_loss += self.loss_function(val_outputs, val_masks)
                 val_loss /= len(self.val_loader)
