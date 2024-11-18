@@ -3,7 +3,7 @@ import argparse
 from data_loader import get_data_loaders
 from trainer import Trainer
 from config.config import Config
-from metrics.metrics import compute_metrics, hausdorff_distance_95, evaluate_model, run_inference
+from metrics.metrics import compute_metrics, hausdorff_distance_95, evaluate_model, run_inference, run_inference_on_folder
 from sklearn.metrics import f1_score
 from torchvision import transforms
 from PIL import Image
@@ -32,6 +32,12 @@ def main():
     inference_parser.add_argument('--model_name', type=str, default='UNet_advanced', help='Model for inference: UNet_advanced, UNet_advanced')
     inference_parser.add_argument('--image_path', type=str, required=True, help='Path to the image for inference')
     inference_parser.add_argument('--model_path', type=str, default='./model.pth', help='Path to the trained model')
+    
+    # Inference on folder subparser
+    inference_folder_parser = subparsers.add_parser("inference_on_folder", help="Run inference on all images in a folder")
+    inference_folder_parser.add_argument('--model_name', type=str, default='UNet_advanced', help='Model for inference: UNet_advanced, UNet_advanced')
+    inference_folder_parser.add_argument('--folder_path', type=str, required=True, help='Path to the folder containing images for inference')
+    inference_folder_parser.add_argument('--model_path', type=str, default='./model.pth', help='Path to the trained model')
 
     # Test subparser
     test_parser = subparsers.add_parser("test", help="Evaluate the model on the test set")
@@ -62,7 +68,7 @@ def main():
             num_epochs=args.epochs,
             learning_rate=args.learning_rate,
             loss_type=args.loss_function,  # Correct name here
-            model_save_path='./model.pth',
+            model_save_path='./model_files/model.pth',
             patience=args.patience,
         )
         trainer.train()
@@ -87,6 +93,25 @@ def main():
         device=device,  # This should match the device you are using
         output_dir="./outputs"  # Ensure this is passed if the function expects it
     )
+    elif args.mode == "inference_on_folder":
+        # Inference on folder mode
+        config = Config(model_name=args.model_name)  # Ensure the model architecture is properly set up
+        config.model.load_state_dict(torch.load(args.model_path))  # Load state_dict
+        config.model.to(device)
+
+        transform = transforms.Compose([
+            transforms.Resize((448, 448)),
+            transforms.ToTensor(),
+        ])
+
+        # Run inference on all images in the folder
+        run_inference_on_folder(
+            model=config.model,
+            folder_path=args.folder_path,
+            transform=transform,
+            device=device,  # This should match the device you are using
+            output_dir="./outputs"  # Ensure this is passed if the function expects it
+        )
 
     elif args.mode == "test":
         # Test mode

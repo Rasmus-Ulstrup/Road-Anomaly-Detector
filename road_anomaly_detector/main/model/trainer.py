@@ -22,7 +22,6 @@ class Trainer:
         
         self.best_val_loss = float('inf')
         self.epochs_without_improvement = 0
-        
 
     def select_loss_function(self, loss_type, **kwargs):
         """Select the loss function based on the string type."""
@@ -34,9 +33,11 @@ class Trainer:
             pos_weight_tensor = torch.tensor([pos_weight]).to(self.device)  # Move pos_weight to the correct device
             return torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight_tensor)
         elif loss_type == "ce":
-            return torch.nn.CrossEntropyLoss()
+            return self.cross_entropy_loss()
         elif loss_type == "focal":
-            return self.focal_loss(**kwargs)
+            alpha = kwargs.get('alpha', 0.995)  # Alpha to mittigate class imbalance
+            gamma = kwargs.get('gamma', 2)  # Default gamma for focusing on hard examples
+            return self.focal_loss(alpha, gamma)
         else:
             raise ValueError(f"Loss function {loss_type} not supported")
 
@@ -47,28 +48,31 @@ class Trainer:
         dice = (2. * intersection + smooth) / (pred.sum(dim=2).sum(dim=2) + target.sum(dim=2).sum(dim=2) + smooth)
         return 1 - dice.mean()
 
-    def focal_loss(self, inputs, targets, alpha=0.25, gamma=2, smooth=1e-5):
-        """
-        Focal Loss implementation for binary classification
-        Args:
-            inputs: Predicted values (logits)
-            targets: True values (labels)
-            alpha: Balancing factor for class imbalance
-            gamma: Focusing parameter to reduce loss for well-classified examples
-            smooth: Small constant to avoid division by zero
-        """
-        inputs = inputs.contiguous()
-        targets = targets.contiguous()
-        
-        # Apply sigmoid to the inputs
-        inputs = torch.sigmoid(inputs)
-        
-        # Compute cross-entropy loss
-        cross_entropy = -targets * torch.log(inputs + smooth) - (1 - targets) * torch.log(1 - inputs + smooth)
-        
-        # Focal loss adjustment
-        loss = alpha * ((1 - inputs) ** gamma) * cross_entropy
-        return loss.mean()
+    def cross_entropy_loss(self):
+        """Cross-Entropy Loss for multi-class segmentation."""
+        def ce_loss(inputs, targets):
+            inputs = inputs.contiguous()
+            targets = targets.contiguous()
+            probs = F.softmax(inputs, dim=1)  # Softmax to get probabilities for multi-class
+            loss = -torch.sum(targets * torch.log(probs + 1e-5), dim=1)
+            return loss.mean()
+        return ce_loss
+
+
+    def focal_loss(self, alpha, gamma):
+        """Focal loss implementation for binary segmentation."""
+        def fl_loss(inputs, targets):
+            inputs = inputs.contiguous()
+            targets = targets.contiguous()
+            
+            BCE_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+            pt = torch.exp(-BCE_loss)  # Probability of being classified correctly
+            loss = alpha * (1 - pt) ** gamma * BCE_loss
+            return loss.mean()
+
+        return fl_loss
+
+
 
     def train(self):
         for epoch in range(self.num_epochs):
@@ -112,7 +116,7 @@ class Trainer:
             self.best_val_loss = val_loss
             self.epochs_without_improvement = 0
             print("Model improved")
-            torch.save(self.model, self.model_save_path)
+            torch.save(self.model.state_dict(), "model.pth")        #Saves the latest best model
         else:
             self.epochs_without_improvement += 1
             print(f"No improvement in validation loss for {self.epochs_without_improvement} epochs.")
