@@ -3,21 +3,11 @@ import argparse
 from data_loader import get_data_loaders
 from trainer import Trainer
 from config.config import Config
-from metrics.metrics import compute_metrics, hausdorff_distance_95, evaluate_model
+from metrics.metrics import compute_metrics, hausdorff_distance_95, evaluate_model, run_inference
 from sklearn.metrics import f1_score
 from torchvision import transforms
 from PIL import Image
 import numpy as np
-
-# Inference function
-def run_inference(model, image_path, transform, device):
-    model.eval()
-    with torch.no_grad():
-        image = Image.open(image_path).convert("L")
-        input_tensor = transform(image).unsqueeze(0).to(device)
-        output = model(input_tensor)
-        output = model(input_tensor).squeeze().cpu().numpy()
-        return output
 
 
 def main():
@@ -80,28 +70,23 @@ def main():
 
     elif args.mode == "inference":
         # Inference mode
-        config.model.load_state_dict(torch.load(args.model_path))
+        config = Config(model_name=args.model_name)  # Ensure the model architecture is properly set up
+        config.model.load_state_dict(torch.load(args.model_path))  # Load state_dict
         config.model.to(device)
 
         transform = transforms.Compose([
             transforms.Resize((448, 448)),
             transforms.ToTensor(),
         ])
+        print(run_inference.__code__.co_varnames)
 
-        output = metrics.run_inference(config.model, args.image_path, transform, device)
-
-        # Display result
-        import matplotlib.pyplot as plt
-        image = Image.open(args.image_path).convert("L")
-        plt.figure(figsize=(10, 5))
-        plt.subplot(1, 2, 1)
-        plt.title("Input Image")
-        plt.imshow(image, cmap='gray')
-
-        plt.subplot(1, 2, 2)
-        plt.title("Predicted Mask")
-        plt.imshow(output, cmap='gray')
-        plt.show()
+        run_inference(
+        model=config.model,
+        image_path=args.image_path,
+        transform=transform,
+        device=device,  # This should match the device you are using
+        output_dir="./outputs"  # Ensure this is passed if the function expects it
+    )
 
     elif args.mode == "test":
         # Test mode

@@ -112,7 +112,7 @@ class Trainer:
             self.best_val_loss = val_loss
             self.epochs_without_improvement = 0
             print("Model improved")
-            torch.save(self.model.state_dict(), self.model_save_path)
+            torch.save(self.model, self.model_save_path)
         else:
             self.epochs_without_improvement += 1
             print(f"No improvement in validation loss for {self.epochs_without_improvement} epochs.")

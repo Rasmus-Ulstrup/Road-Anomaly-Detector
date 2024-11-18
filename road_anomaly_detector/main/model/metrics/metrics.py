@@ -2,6 +2,9 @@ import numpy as np
 import torch
 from sklearn.metrics import f1_score
 from scipy.spatial.distance import directed_hausdorff
+import matplotlib.pyplot as plt
+import os
+from PIL import Image  # Ensure this is imported at the top of the file
 
 def binarize_output(output, threshold=0.5):
     return (output > threshold).astype(np.uint8)
@@ -54,12 +57,46 @@ def evaluate_model(model, test_loader, device):
     for metric, values in metrics.items():
         print(f"{metric.capitalize()}: {np.mean(values):.4f}")
 
-def run_inference(model, image_path, transform, device):
+def run_inference(model, image_path, transform, device, output_dir="./outputs"):
+    """
+    Run inference on a single image and save the predicted mask.
+
+    Args:
+        model (torch.nn.Module): The trained model.
+        image_path (str): Path to the input image.
+        transform (callable): Transformations for the input image.
+        device (torch.device): Device to run the inference on (CPU/GPU).
+        output_dir (str): Directory to save the predicted mask.
+    """
     model.eval()
     with torch.no_grad():
+        # Load and transform the image
         image = Image.open(image_path).convert("L")
         input_tensor = transform(image).unsqueeze(0).to(device)
+        
+        # Perform inference
         output = model(input_tensor)
-        output = model(input_tensor).squeeze().cpu().numpy()
-        return output
+        output_mask = (output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)  # Binarize the output (Only works on cpu)
+        
+        # Resize the original image to match the predicted mask dimensions
+        resized_image = image.resize((output_mask.shape[1], output_mask.shape[0]), Image.LANCZOS)
+        
+        # Combine resized input image and predicted mask into a single image
+        input_array = np.array(resized_image)
+        mask_array = output_mask * 255  # Scale mask to 0-255
+        combined_image = np.hstack((input_array, mask_array))  # Combine side by side
+        
+        # Save the combined image
+        os.makedirs(output_dir, exist_ok=True)
+        base_name = os.path.basename(image_path)
+        combined_path = os.path.join(output_dir, f"combined_{base_name}")
+        Image.fromarray(combined_image).save(combined_path)
+        print(f"Combined image saved to {combined_path}")
+        
+        # Optionally visualize the results
+        plt.figure(figsize=(12, 6))
+        plt.title("Input Image and Predicted Mask")
+        plt.imshow(combined_image, cmap="gray")
+        plt.axis("off")
+        plt.show()
     
