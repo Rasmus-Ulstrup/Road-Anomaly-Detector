@@ -1,7 +1,3 @@
-road_anomaly_detector/main/model/model.pth
-road_anomaly_detector/main/model/unet_advanced_dice_lr4_pat10_cfd.pth
-road_anomaly_detector/main/model/unet_advanced_cfd_lr13_p20_bcemodel.pth
-road_anomaly_detector/main/model/unet_advanced_cfd_lr14_p20_focal.pth
 road_anomaly_detector/main/model/test_images
 road_anomaly_detector/main/model/outputs
 road_anomaly_detector/main/model/model_files

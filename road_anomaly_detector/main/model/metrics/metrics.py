@@ -5,17 +5,21 @@ from scipy.spatial.distance import directed_hausdorff
 import matplotlib.pyplot as plt
 import os
 from PIL import Image  # Ensure this is imported at the top of the file
-
+from torchvision import transforms
+from numba import jit
 def binarize_output(output, threshold=0.5):
     return (output > threshold).astype(np.uint8)
 
+@jit(nopython=True)  # Numba will attempt to compile the function to machine code
 def compute_metrics(predictions, ground_truths):
-    predictions = predictions.flatten()
-    ground_truths = ground_truths.flatten()
+    # Ensure both arrays are binary (0 or 1)
+    predictions = (predictions > 0.5).astype(np.uint8)
+    ground_truths = (ground_truths > 0.5).astype(np.uint8)
 
-    TP_d = np.sum((predictions == 1) & (ground_truths == 1))
-    FP_d = np.sum((predictions == 1) & (ground_truths == 0))
-    FN_d = np.sum((predictions == 0) & (ground_truths == 1))
+    # Compute true positives, false positives, false negatives
+    TP_d = np.sum(predictions & ground_truths)
+    FP_d = np.sum(predictions & ~ground_truths)
+    FN_d = np.sum(~predictions & ground_truths)
 
     correctness = TP_d / (TP_d + FP_d) if (TP_d + FP_d) > 0 else 0
     completeness = TP_d / (TP_d + FN_d) if (TP_d + FN_d) > 0 else 0
@@ -23,41 +27,75 @@ def compute_metrics(predictions, ground_truths):
 
     return correctness, completeness, quality
 
+
 def hausdorff_distance_95(prediction, ground_truth):
+    # Compute directed Hausdorff distance between two sets of points
     prediction = prediction.reshape(-1, 2)
     ground_truth = ground_truth.reshape(-1, 2)
+
+    # Using scipy's directed_hausdorff function
     hausdorff_pred_to_gt = directed_hausdorff(prediction, ground_truth)[0]
     hausdorff_gt_to_pred = directed_hausdorff(ground_truth, prediction)[0]
+
+    # Compute the 95th percentile of the Hausdorff distances
     hd95 = np.percentile([hausdorff_pred_to_gt, hausdorff_gt_to_pred], 95)
+    
     return hd95
 
 # Test evaluation function
 def evaluate_model(model, test_loader, device):
     model.eval()
-    metrics = {"correctness": [], "completeness": [], "quality": [], "f1": [], "hd95": []}
+    batch_metrics = {"correctness": [], "completeness": [], "quality": [], "f1": [], "hd95": []}
+
+    total_batches = len(test_loader)
+    
     with torch.no_grad():
-        for images, masks in test_loader:
+        for i, (images, masks) in enumerate(test_loader):
             images, masks = images.to(device), masks.to(device)
             outputs = (model(images) > 0.5).float().cpu().numpy()
             masks = masks.cpu().numpy()
-
+            print("done with inference")
+            # Accumulate batch metrics
+            batch_correctness = []
+            batch_completeness = []
+            batch_quality = []
+            batch_f1 = []
+            batch_hd95 = []
+            
             for pred, gt in zip(outputs, masks):
-                pred_binary = (pred > 0.5).astype(np.uint8)
                 gt_binary = (gt > 0.5).astype(np.uint8)
+                print("test1")
+                correctness, completeness, quality = compute_metrics(pred, gt_binary)
+                print("test2")
+                batch_correctness.append(correctness)
+                batch_completeness.append(completeness)
+                batch_quality.append(quality)
+                batch_f1.append(f1_score(gt_binary.flatten(), pred.flatten()))
+                print("test3")
+                #batch_hd95.append(hausdorff_distance_95(pred, gt_binary))
+                print("test4")
+            # Calculate the average for the batch
+            batch_metrics["correctness"].append(np.mean(batch_correctness))
+            batch_metrics["completeness"].append(np.mean(batch_completeness))
+            batch_metrics["quality"].append(np.mean(batch_quality))
+            batch_metrics["f1"].append(np.mean(batch_f1))
+            #batch_metrics["hd95"].append(np.mean(batch_hd95))
 
-                correctness, completeness, quality = compute_metrics(pred_binary, gt_binary)
-                metrics["correctness"].append(correctness)
-                metrics["completeness"].append(completeness)
-                metrics["quality"].append(quality)
-                metrics["f1"].append(f1_score(gt_binary.flatten(), pred_binary.flatten()))
-                metrics["hd95"].append(hausdorff_distance_95(pred_binary, gt_binary))
-
-    # Print metrics
+            # Print progress for every 10 batches
+            if i % max(1, total_batches // 10) == 0 or i == total_batches - 1:
+                print(f"Processed {i + 1}/{total_batches} batches ({(i + 1) / total_batches * 100:.2f}%)")
+        
+    # Print final average metrics for the entire test set
     print("\nTest Set Metrics:")
-    for metric, values in metrics.items():
+    for metric, values in batch_metrics.items():
         print(f"{metric.capitalize()}: {np.mean(values):.4f}")
+def default_transform():
+    return transforms.Compose([
+        transforms.Resize((448, 448)),
+        transforms.ToTensor(),
+    ])
 
-def run_inference(model, image_path, transform, device, output_dir="./outputs"):
+def run_inference(model, image_path, device, output_dir="./outputs"):
     """
     Run inference on a single image and save the predicted mask.
 
@@ -69,6 +107,7 @@ def run_inference(model, image_path, transform, device, output_dir="./outputs"):
         output_dir (str): Directory to save the predicted mask.
     """
     model.eval()
+    transform = default_transform()  # Use the default transform here
     with torch.no_grad():
         # Load and transform the image
         image = Image.open(image_path).convert("L")
@@ -99,7 +138,7 @@ def run_inference(model, image_path, transform, device, output_dir="./outputs"):
         plt.imshow(combined_image, cmap="gray")
         plt.axis("off")
         plt.show()
-def run_inference_on_folder(model, folder_path, transform, device, output_dir="./outputs"):
+def run_inference_on_folder(model, folder_path, device, output_dir="./outputs"):
     """
     Run inference on all images in a folder and save the predicted masks.
 
@@ -112,10 +151,9 @@ def run_inference_on_folder(model, folder_path, transform, device, output_dir=".
     """
     # Ensure the model is in evaluation mode
     model.eval()
-
+    transform = default_transform()  # Use the default transform here
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
-
     # Loop through all images in the folder
     for image_name in os.listdir(folder_path):
         # Construct full image path

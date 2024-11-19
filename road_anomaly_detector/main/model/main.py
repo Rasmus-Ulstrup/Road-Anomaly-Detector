@@ -19,13 +19,16 @@ def main():
 
     # Train subparser
     train_parser = subparsers.add_parser("train", help="Train the model")
-    train_parser.add_argument('--model_name', type=str, default='UNet_advanced', help='Model to train: UNet_advanced, UNet_advanced')
-    train_parser.add_argument('--epochs', type=int, default=50, help='Number of epochs')
-    train_parser.add_argument('--learning_rate', type=float, default=1e-3, help='Learning rate')
-    train_parser.add_argument('--batch_size', type=int, default=4, help='Batch size')
-    train_parser.add_argument('--patience', type=int, default=10, help='Patience for early stopping')
+    train_parser.add_argument('--model_name', type=str, default='UNet_advanced', help='Model to train')
     train_parser.add_argument('--dataset_name', type=str, required=True, help="Dataset name")
-    train_parser.add_argument('--loss_function', type=str, default='dice', help="Loss function: 'dice', 'bce', ce, focal")
+    train_parser.add_argument('--batch_size', type=int, default=4, help='Batch size')
+    train_parser.add_argument('--image_size', type=tuple, default=(448, 448), help='Image size (height, width)')
+    train_parser.add_argument('--test_size', type=float, default=0.2, help='Validation/test split size')
+    train_parser.add_argument('--loss_function', type=str, default='dice', help="Loss function")
+    train_parser.add_argument('--learning_rate', type=float, default=1e-3, help='Learning rate')
+    train_parser.add_argument('--epochs', type=int, default=50, help='Number of epochs')
+    train_parser.add_argument('--patience', type=int, default=10, help='Patience for early stopping')
+
 
     # Inference subparser
     inference_parser = subparsers.add_parser("inference", help="Run inference on a single image")
@@ -48,84 +51,53 @@ def main():
 
     args = parser.parse_args()
 
-    # Load configuration
-    config = Config(model_name=args.model_name)
-    device = config.device
+    # Initialize config with all parameters
+    # config = Config(
+    #     model_name=args.model_name,
+    #     dataset_name=args.dataset_name,
+    #     batch_size=args.batch_size,
+    #     image_size=args.image_size,
+    #     test_size=args.test_size,
+    #     loss_function=args.loss_function,
+    #     learning_rate=args.learning_rate,
+    #     epochs=args.epochs,
+    #     patience=args.patience,
+    # )
 
     if args.mode == "train":
-        # Training mode
-        train_loader, val_loader = get_data_loaders(
+        config = Config(
+            model_name=args.model_name,
             dataset_name=args.dataset_name,
             batch_size=args.batch_size,
-            image_size=(448, 448),
-            test_size=0.2
-        )
-
-        trainer = Trainer(
-            model=config.model,
-            train_loader=train_loader,
-            val_loader=val_loader,
-            num_epochs=args.epochs,
+            image_size=args.image_size,
+            test_size=args.test_size,
+            loss_function=args.loss_function,
             learning_rate=args.learning_rate,
-            loss_type=args.loss_function,  # Correct name here
-            model_save_path='./model_files/model.pth',
+            epochs=args.epochs,
             patience=args.patience,
         )
+        train_loader, val_loader = get_data_loaders(config)
+        trainer = Trainer(model=config.model, train_loader=train_loader, val_loader=val_loader, config=config)
         trainer.train()
-        print("Training complete! Model saved to './model.pth'.")
-
+        
     elif args.mode == "inference":
-        # Inference mode
-        config = Config(model_name=args.model_name)  # Ensure the model architecture is properly set up
-        config.model.load_state_dict(torch.load(args.model_path))  # Load state_dict
-        config.model.to(device)
-
-        transform = transforms.Compose([
-            transforms.Resize((448, 448)),
-            transforms.ToTensor(),
-        ])
-        print(run_inference.__code__.co_varnames)
-
-        run_inference(
-        model=config.model,
-        image_path=args.image_path,
-        transform=transform,
-        device=device,  # This should match the device you are using
-        output_dir="./outputs"  # Ensure this is passed if the function expects it
-    )
+        config = Config(model_name=args.model_name)  # Only pass parameters relevant for inference
+        config.model.load_state_dict(torch.load(args.model_path))
+        run_inference(config.model, args.image_path, device=config.device)
     elif args.mode == "inference_on_folder":
-        # Inference on folder mode
-        config = Config(model_name=args.model_name)  # Ensure the model architecture is properly set up
-        config.model.load_state_dict(torch.load(args.model_path))  # Load state_dict
-        config.model.to(device)
-
-        transform = transforms.Compose([
-            transforms.Resize((448, 448)),
-            transforms.ToTensor(),
-        ])
-
-        # Run inference on all images in the folder
-        run_inference_on_folder(
-            model=config.model,
-            folder_path=args.folder_path,
-            transform=transform,
-            device=device,  # This should match the device you are using
-            output_dir="./outputs"  # Ensure this is passed if the function expects it
-        )
+        config = Config(model_name=args.model_name)
+        config.model.load_state_dict(torch.load(args.model_path))
+        run_inference_on_folder(config.model, args.folder_path, device=config.device)
 
     elif args.mode == "test":
-        # Test mode
-        _, test_loader = get_data_loaders(
+        config = Config(
+            model_name=args.model_name,
             dataset_name=args.dataset_name,
-            batch_size=args.batch_size,
-            image_size=(448, 448),
-            test_size=0.1
+            batch_size=args.batch_size
         )
-
+        _, test_loader = get_data_loaders(config)
         config.model.load_state_dict(torch.load(args.model_path))
-        config.model.to(device)
-
-        evaluate_model(config.model, test_loader, device)
+        evaluate_model(config.model, test_loader, config.device)
 
 if __name__ == "__main__":
     main()

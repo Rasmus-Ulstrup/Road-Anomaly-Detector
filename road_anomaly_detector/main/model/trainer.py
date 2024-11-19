@@ -1,25 +1,24 @@
 import torch
 import torch.nn.functional as F
+from config.config import Config
 
 class Trainer:
-    def __init__(self, model, train_loader, val_loader, num_epochs=500, 
-                 learning_rate=1e-3, patience=10, model_save_path="advanced_unet_segmentation_model.pth",
-                 loss_type="dice", device=None, **kwargs):  # Align argument name
-        self.device = device or ('cuda' if torch.cuda.is_available() else 'cpu')  # Default to GPU if available
+    def __init__(self, model, train_loader, val_loader, config):
+        self.config = config  # Correctly assign the passed config object
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
-        self.num_epochs = num_epochs
-        self.learning_rate = learning_rate
-        self.patience = patience
-        self.model_save_path = model_save_path
-        
-        # Select optimizer
-        self.optimizer = torch.optim.Adam(model.parameters(), lr=self.learning_rate)
+        self.device = config.device  # Get device from the config object
+        self.num_epochs = config.epochs
+        self.learning_rate = config.learning_rate
+        self.patience = config.patience
+        self.model_save_path = config.model_save_path
 
-        # Select loss function
-        self.loss_function = self.select_loss_function(loss_type, **kwargs)
-        
+        # Initialize optimizer
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
+
+        # Select the loss function
+        self.loss_function = self.select_loss_function(config.loss_function)
         self.best_val_loss = float('inf')
         self.epochs_without_improvement = 0
 
@@ -75,7 +74,7 @@ class Trainer:
 
 
     def train(self):
-        for epoch in range(self.num_epochs):
+        for epoch in range(self.config.epochs):
             # Training loop
             self.model.train()
             train_loss = 0
@@ -107,7 +106,7 @@ class Trainer:
                 val_loss /= len(self.val_loader)
 
             # Print stats and check for improvement
-            print(f"Epoch [{epoch+1}/{self.num_epochs}], Train Loss: {train_loss/len(self.train_loader)}, Val Loss: {val_loss:.4f}")
+            print(f"Epoch [{epoch+1}/{self.config.epochs}], Train Loss: {train_loss/len(self.train_loader)}, Val Loss: {val_loss:.4f}")
             self._check_improvement(val_loss)
 
     def _check_improvement(self, val_loss):
@@ -116,13 +115,13 @@ class Trainer:
             self.best_val_loss = val_loss
             self.epochs_without_improvement = 0
             print("Model improved")
-            torch.save(self.model.state_dict(), "model.pth")        #Saves the latest best model
+            torch.save(self.model.state_dict(), f"{self.config.model_name}_{self.config.dataset_name}.pth")        #Saves the latest best model
         else:
             self.epochs_without_improvement += 1
             print(f"No improvement in validation loss for {self.epochs_without_improvement} epochs.")
         
-        if self.epochs_without_improvement >= self.patience:
+        if self.epochs_without_improvement >= self.config.patience:
             print(f"Early stopping after {self.epochs_without_improvement} epochs without improvement.")
             print(f"Best validation loss: {self.best_val_loss:.4f}")
             print(f"Model saved to {self.model_save_path}")
-            exit()
+            return
