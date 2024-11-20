@@ -77,8 +77,8 @@ def update_plot(ax_image, ax_text, ax_distances, image, x_cross, middle_line_coo
     ax_distances.set_title("Distances Between Centers")
     ax_distances.set_xlabel("Line Number")
     ax_distances.set_ylabel("Distance")
-    ax_distances.set_xlim([-1, 61])
-    ax_distances.set_ylim([20, 40])
+    ax_distances.set_xlim([-1, 121])
+    ax_distances.set_ylim([10, 20])
     ax_distances.grid()
 
 

@@ -79,34 +79,39 @@ class Trainer:
             self.model.train()
             train_loss = 0
             for images, masks in self.train_loader:
-                # Move both images and masks to the correct device
                 images, masks = images.to(self.device), masks.to(self.device)
-                    
-                # Forward pass
-                outputs = self.model(images)
-                loss = self.loss_function(outputs, masks)
-                    
-                # Backward and optimize
+                
                 self.optimizer.zero_grad()
+                outputs = self.model(images)
+                
+                # Handle multi-output models
+                if isinstance(outputs, list):
+                    loss = sum(self.loss_function(output, masks) for output in outputs) / len(outputs)
+                else:
+                    loss = self.loss_function(outputs, masks)
+                
                 loss.backward()
                 self.optimizer.step()
-                    
                 train_loss += loss.item()
             
             # Validation loop
             self.model.eval()
+            val_loss = 0
             with torch.no_grad():
-                val_loss = 0
                 for val_images, val_masks in self.val_loader:
-                    # Move validation images and masks to the same device
                     val_images, val_masks = val_images.to(self.device), val_masks.to(self.device)
-                    
                     val_outputs = self.model(val_images)
-                    val_loss += self.loss_function(val_outputs, val_masks)
+                    
+                    # Handle multi-output models
+                    if isinstance(val_outputs, list):
+                        val_loss += sum(self.loss_function(output, val_masks) for output in val_outputs) / len(val_outputs)
+                    else:
+                        val_loss += self.loss_function(val_outputs, val_masks)
+                
                 val_loss /= len(self.val_loader)
-
+            
             # Print stats and check for improvement
-            print(f"Epoch [{epoch+1}/{self.config.epochs}], Train Loss: {train_loss/len(self.train_loader)}, Val Loss: {val_loss:.4f}")
+            print(f"Epoch [{epoch + 1}/{self.config.epochs}], Train Loss: {train_loss / len(self.train_loader):.4f}, Val Loss: {val_loss:.4f}")
             self._check_improvement(val_loss)
 
     def _check_improvement(self, val_loss):
@@ -115,7 +120,7 @@ class Trainer:
             self.best_val_loss = val_loss
             self.epochs_without_improvement = 0
             print("Model improved")
-            torch.save(self.model.state_dict(), f"{self.config.model_name}_{self.config.dataset_name}.pth")        #Saves the latest best model
+            torch.save(self.model.state_dict(), self.config.model_save_path)        #Saves the latest best model
         else:
             self.epochs_without_improvement += 1
             print(f"No improvement in validation loss for {self.epochs_without_improvement} epochs.")
@@ -124,4 +129,4 @@ class Trainer:
             print(f"Early stopping after {self.epochs_without_improvement} epochs without improvement.")
             print(f"Best validation loss: {self.best_val_loss:.4f}")
             print(f"Model saved to {self.model_save_path}")
-            return
+            exit()

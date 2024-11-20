@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-class UNet_advanced(nn.Module):
+class unet(nn.Module):
     def __init__(self):
-        super(UNet_advanced, self).__init__()
+        super(unet, self).__init__()
 
         # Encoder
         self.encoder1 = self._conv_block(1, 64)
@@ -76,5 +76,5 @@ class UNet_advanced(nn.Module):
         out = self.output_activation(out)
         
         return out
-model = UNet_advanced().cuda()
+#model = unet().cuda()
 # print(model)

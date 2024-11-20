@@ -45,10 +45,11 @@ def hausdorff_distance_95(prediction, ground_truth):
 # Test evaluation function
 def evaluate_model(model, test_loader, device):
     model.eval()
-    batch_metrics = {"correctness": [], "completeness": [], "quality": [], "f1": [], "hd95": []}
+    batch_metrics = {"correctness": [], "completeness": [], "quality": [], "f1": []
+                     #, "hd95": []
+                     }
 
     total_batches = len(test_loader)
-    
     with torch.no_grad():
         for i, (images, masks) in enumerate(test_loader):
             images, masks = images.to(device), masks.to(device)
@@ -60,20 +61,16 @@ def evaluate_model(model, test_loader, device):
             batch_completeness = []
             batch_quality = []
             batch_f1 = []
-            batch_hd95 = []
+            #batch_hd95 = []
             
             for pred, gt in zip(outputs, masks):
                 gt_binary = (gt > 0.5).astype(np.uint8)
-                print("test1")
                 correctness, completeness, quality = compute_metrics(pred, gt_binary)
-                print("test2")
                 batch_correctness.append(correctness)
                 batch_completeness.append(completeness)
                 batch_quality.append(quality)
                 batch_f1.append(f1_score(gt_binary.flatten(), pred.flatten()))
-                print("test3")
                 #batch_hd95.append(hausdorff_distance_95(pred, gt_binary))
-                print("test4")
             # Calculate the average for the batch
             batch_metrics["correctness"].append(np.mean(batch_correctness))
             batch_metrics["completeness"].append(np.mean(batch_completeness))

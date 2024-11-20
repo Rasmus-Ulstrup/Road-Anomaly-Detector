@@ -19,7 +19,7 @@ def main():
 
     # Train subparser
     train_parser = subparsers.add_parser("train", help="Train the model")
-    train_parser.add_argument('--model_name', type=str, default='UNet_advanced', help='Model to train')
+    train_parser.add_argument('--model_name', type=str, default='unet', help='Model to train')
     train_parser.add_argument('--dataset_name', type=str, required=True, help="Dataset name")
     train_parser.add_argument('--batch_size', type=int, default=4, help='Batch size')
     train_parser.add_argument('--image_size', type=tuple, default=(448, 448), help='Image size (height, width)')
@@ -32,37 +32,24 @@ def main():
 
     # Inference subparser
     inference_parser = subparsers.add_parser("inference", help="Run inference on a single image")
-    inference_parser.add_argument('--model_name', type=str, default='UNet_advanced', help='Model for inference: UNet_advanced, UNet_advanced')
+    inference_parser.add_argument('--model_name', type=str, default='unet', help='Model for inference: unet, unet')
     inference_parser.add_argument('--image_path', type=str, required=True, help='Path to the image for inference')
     inference_parser.add_argument('--model_path', type=str, default='./model.pth', help='Path to the trained model')
     
     # Inference on folder subparser
     inference_folder_parser = subparsers.add_parser("inference_on_folder", help="Run inference on all images in a folder")
-    inference_folder_parser.add_argument('--model_name', type=str, default='UNet_advanced', help='Model for inference: UNet_advanced, UNet_advanced')
+    inference_folder_parser.add_argument('--model_name', type=str, default='unet', help='Model for inference: unet, unet')
     inference_folder_parser.add_argument('--folder_path', type=str, required=True, help='Path to the folder containing images for inference')
     inference_folder_parser.add_argument('--model_path', type=str, default='./model.pth', help='Path to the trained model')
 
     # Test subparser
     test_parser = subparsers.add_parser("test", help="Evaluate the model on the test set")
-    test_parser.add_argument('--model_name', type=str, default='UNet_advanced', help='Model to test: UNet_advanced, UNet_advanced')
+    test_parser.add_argument('--model_name', type=str, default='unet', help='Model to test: unet, unet')
     test_parser.add_argument('--dataset_name', type=str, required=True, help="Data set name")
     test_parser.add_argument('--batch_size', type=int, default=4, help='Batch size')
-    test_parser.add_argument('--model_path', type=str, default='./model.pth', help='Path to the trained model')
+    test_parser.add_argument('--model_path', type=str, default='model_files/.model.pth', help='Path to the trained model')
 
     args = parser.parse_args()
-
-    # Initialize config with all parameters
-    # config = Config(
-    #     model_name=args.model_name,
-    #     dataset_name=args.dataset_name,
-    #     batch_size=args.batch_size,
-    #     image_size=args.image_size,
-    #     test_size=args.test_size,
-    #     loss_function=args.loss_function,
-    #     learning_rate=args.learning_rate,
-    #     epochs=args.epochs,
-    #     patience=args.patience,
-    # )
 
     if args.mode == "train":
         config = Config(
@@ -76,7 +63,7 @@ def main():
             epochs=args.epochs,
             patience=args.patience,
         )
-        train_loader, val_loader = get_data_loaders(config)
+        train_loader, val_loader,_ = get_data_loaders(config)
         trainer = Trainer(model=config.model, train_loader=train_loader, val_loader=val_loader, config=config)
         trainer.train()
         
@@ -95,7 +82,7 @@ def main():
             dataset_name=args.dataset_name,
             batch_size=args.batch_size
         )
-        _, test_loader = get_data_loaders(config)
+        _,_, test_loader = get_data_loaders(config)
         config.model.load_state_dict(torch.load(args.model_path))
         evaluate_model(config.model, test_loader, config.device)
 

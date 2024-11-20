@@ -96,7 +96,7 @@ def get_data_loaders(Config):
         }
     }
 
-    # Validate dataset_name from the config
+     # Validate dataset_name from the config
     if Config.dataset_name not in datasets:
         raise ValueError(f"Dataset '{Config.dataset_name}' not found. Available datasets: {', '.join(datasets.keys())}")
 
@@ -108,23 +108,28 @@ def get_data_loaders(Config):
     image_paths = sorted([os.path.join(image_dir, fname) for fname in os.listdir(image_dir)])
     mask_paths = sorted([os.path.join(mask_dir, fname) for fname in os.listdir(mask_dir)])
 
-    # Split into train and validation sets
-    train_images, val_images, train_masks, val_masks = train_test_split(
-        image_paths, mask_paths, test_size=Config.test_size, random_state=42
+    # Split into train, validation, and test sets
+    train_images, temp_images, train_masks, temp_masks = train_test_split(
+        image_paths, mask_paths, test_size=0.2, random_state=42
+    )
+    val_images, test_images, val_masks, test_masks = train_test_split(
+        temp_images, temp_masks, test_size=0.5, random_state=42
     )
 
     # Define transformations
     transform = transforms.Compose([
-        transforms.Resize(Config.image_size),  # Use image size from Config
+        transforms.Resize(Config.image_size),
         transforms.ToTensor(),
     ])
 
-    # Create datasets
+    # Create datasets for train, val, and test
     train_dataset = SegmentationDataset(train_images, train_masks, transform=transform)
     val_dataset = SegmentationDataset(val_images, val_masks, transform=transform)
+    test_dataset = SegmentationDataset(test_images, test_masks, transform=transform)
 
     # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=Config.batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=Config.batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=Config.batch_size, shuffle=False)
 
-    return train_loader, val_loader
+    return train_loader, val_loader, test_loader
