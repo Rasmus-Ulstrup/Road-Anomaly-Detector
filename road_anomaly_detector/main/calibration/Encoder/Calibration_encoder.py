@@ -119,7 +119,7 @@ def main():
     try:
         print("Starting encoding calibration process...")
         #WD = float(input("Enter Work distance (in meters): "))
-        WD = 0.764
+        WD = 0.915
 
         cam_specs = {
             "Resolution": (4096/2, 1),
@@ -129,8 +129,8 @@ def main():
         }
 
         cam = camProbities(focal=8.5, WD=WD, CamSpecs=cam_specs)
-        #initial_resolution = cam.calculateEncoderResolution() * 8 # times 8 because we have
-        initial_resolution = 7535
+        initial_resolution = cam.calculateEncoderResolution() * 8 # times 8 because we have
+        #initial_resolution = 7535
         # 2 rising edge channels and pulse every 4 encode tick.
 
         print(f"Initial resolution: {initial_resolution}")

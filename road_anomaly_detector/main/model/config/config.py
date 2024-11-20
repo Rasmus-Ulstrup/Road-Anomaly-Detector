@@ -30,7 +30,7 @@ class Config:
     def select_model(self):
         if self.model_name == "UNet_simple":
             return UNet_simple().to(self.device)
-        elif self.model_name == "unet":
+        elif self.model_name == "UNet":
             return unet().to(self.device)
         elif self.model_name == "HED":
             return HED().to(self.device)

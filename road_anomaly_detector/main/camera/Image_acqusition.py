@@ -235,7 +235,7 @@ class LineScanCamera:
 
 def main():
     # Create instance of the LineScanCamera class
-    camera = LineScanCamera(frame_height=1557, exposure=10, trigger='encoder', compression='png')
+    camera = LineScanCamera(frame_height=1557, exposure=25, trigger='encoder', compression='png')
 
     #Set length mode:
     #camera.image_length_mode()

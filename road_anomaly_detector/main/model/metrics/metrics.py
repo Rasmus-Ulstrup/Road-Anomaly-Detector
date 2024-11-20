@@ -112,6 +112,7 @@ def run_inference(model, image_path, device, output_dir="./outputs"):
         
         # Perform inference
         output = model(input_tensor)
+        
         output_mask = (output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)  # Binarize the output (Only works on cpu)
         
         # Resize the original image to match the predicted mask dimensions

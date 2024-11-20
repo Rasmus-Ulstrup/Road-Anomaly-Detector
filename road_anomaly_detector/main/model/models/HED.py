@@ -89,5 +89,5 @@ class HED(nn.Module):
         # Merge outputs
         merged = self.merge(torch.cat([side1, side2, side3, side4, side5], dim=1))
         
-        return [side1, side2, side3, side4, side5, merged]
+        return merged
 #model = HED()

@@ -37,6 +37,10 @@ class Trainer:
             alpha = kwargs.get('alpha', 0.995)  # Alpha to mittigate class imbalance
             gamma = kwargs.get('gamma', 2)  # Default gamma for focusing on hard examples
             return self.focal_loss(alpha, gamma)
+        elif loss_type == "tversky":
+            alpha = kwargs.get('alpha', 0.3)  # Default alpha
+            beta = kwargs.get('beta', 0.7)   # Default beta
+            return self.tversky_loss(alpha, beta)
         else:
             raise ValueError(f"Loss function {loss_type} not supported")
 
@@ -71,6 +75,19 @@ class Trainer:
 
         return fl_loss
 
+    def tversky_loss(self, alpha, beta, smooth=1e-5):
+        def loss_fn(inputs, targets):
+            inputs = torch.sigmoid(inputs)  # Apply sigmoid for probabilities
+            true_pos = (inputs * targets).sum(dim=(1, 2, 3))
+            false_neg = ((1 - inputs) * targets).sum(dim=(1, 2, 3))
+            false_pos = (inputs * (1 - targets)).sum(dim=(1, 2, 3))
+
+            tversky_index = (true_pos + smooth) / (
+                true_pos + alpha * false_pos + beta * false_neg + smooth
+            )
+            return (1 - tversky_index).mean()
+
+        return loss_fn
 
 
     def train(self):
