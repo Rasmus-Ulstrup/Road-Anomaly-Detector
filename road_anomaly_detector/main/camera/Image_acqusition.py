@@ -43,12 +43,12 @@ class LineScanCamera:
             print("Select a folder to save the captured image:")
             Tk().withdraw()  # Hide the root window
             folder_name = input("Enter a folder name: ")
-            self.output_folder = os.path.join("/home/crackscope/Road-Anomaly-Detector/Test", folder_name)
+            self.output_folder = os.path.join("/home/crackscope/Road-Anomaly-Detector/test", folder_name)
             os.makedirs(self.output_folder, exist_ok=True)  # Create the folder if it doesn't exist
         except TclError:
             print("Tkinter not available, please enter the path manually:")
             folder_name = input("Enter a folder name: ")
-            self.output_folder = os.path.join("/home/crackscope/Road-Anomaly-Detector/Test", folder_name)
+            self.output_folder = os.path.join("/home/crackscope/Road-Anomaly-Detector/test", folder_name)
             os.makedirs(self.output_folder, exist_ok=True)  # Create the folder if it doesn't exist
 
         self.output_path = os.path.join(self.output_folder, f"captured_image.{self.compression}")
@@ -107,6 +107,7 @@ class LineScanCamera:
 
         self.cam.StopGrabbing()
         return self.img
+    
     def capture_image_dynamic(self):
         self.cam.StartGrabbing()
 
@@ -146,7 +147,7 @@ class LineScanCamera:
 
         # Return the valid part of the image, now fully captured and stacked
         return self.img
-    def capture_image_dynamic_auto(self, auto):
+    def capture_image_dynamic_auto(self):
         self.cam.StartGrabbing()
 
         # Create a separate thread to listen for user input
@@ -242,8 +243,8 @@ def main():
     
     # Capture and display the image
     #camera.capture_image(True)
-    #camera.capture_image_dynamic()
-    camera.capture_image_dynamic_auto(True)
+    camera.capture_image_dynamic()
+    #camera.capture_image_dynamic_auto(True)
     #camera.show_image()  # Optional: Display the image
     camera.save_image()
     
