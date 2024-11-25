@@ -2,7 +2,7 @@ import numpy as np
 from PIL import Image
 
 # Define dimensions in millimeters and desired DPI
-line_spacing = 50 #mm
+line_spacing = 25 #mm
 line_width = 1 #mm
 height_mm, width_mm = 200, 1560  # Pattern dimensions in mm
 dpi = 300  # Print quality
@@ -36,7 +36,7 @@ line_spacing_px = int(line_spacing * pixels_per_mm)  # Spacing for x
 line_width_px = int(line_width * pixels_per_mm)  # Line width for x
 
 # Draw vertical and diagonal lines, leaving padding at the bottom
-for x in range(0, width_px - line_spacing_px, line_spacing_px):
+for x in range(0, width_px, line_spacing_px):
     # Draw the vertical line centered within the x
     start_x = x + (line_spacing_px - line_width_px) // 2
     image[:height_px, start_x:start_x + line_width_px] = 0  # Vertical line
@@ -51,7 +51,7 @@ for x in range(0, width_px - line_spacing_px, line_spacing_px):
             diag_x = int(start_x + (next_start_x - start_x) * (y / height_px) + line_width_px // 2)
             if diag_x < width_px:
                 image[height_px - 1 - y, diag_x:diag_x + line_width_px] = 0
-
+print(diag_x)
 # Save the full pattern as a single PNG
 raw_pattern_image = Image.fromarray(image)
 raw_pattern_image.save("road_anomaly_detector/main/calibration/Camera_calibration/raw_pattern.png", dpi=(dpi, dpi))
