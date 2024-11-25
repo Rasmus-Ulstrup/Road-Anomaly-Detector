@@ -39,7 +39,7 @@ print("Line width PX: ", line_spacing_px)
 vertical_line_count = 0  # Counter for vertical lines
 
 # Draw vertical and diagonal lines, leaving padding at the bottom
-for x in range(0, width_px - line_spacing_px, line_spacing_px):
+for x in range(0, width_px, line_spacing_px):
     # Draw the vertical line centered within the x
     start_x = x + (line_spacing_px - line_width_px) // 2
     image[:height_px, start_x:start_x + line_width_px] = 0  # Vertical line
