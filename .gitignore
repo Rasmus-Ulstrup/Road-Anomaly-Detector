@@ -1,3 +1,4 @@
 road_anomaly_detector/main/model/test_images
 road_anomaly_detector/main/model/outputs
 road_anomaly_detector/main/model/model_files
+road_anomaly_detector/main/model/output/tiles

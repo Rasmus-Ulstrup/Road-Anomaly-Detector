@@ -70,7 +70,7 @@ class HED(nn.Module):
         
         # Merge layer
         self.merge = nn.Conv2d(5, 1, kernel_size=1)
-        
+        self.final_activation = nn.Sigmoid()
     def forward(self, x):
         # Forward through layers
         out1 = self.layer1(x)
@@ -88,6 +88,6 @@ class HED(nn.Module):
         
         # Merge outputs
         merged = self.merge(torch.cat([side1, side2, side3, side4, side5], dim=1))
-        
-        return merged
+        final_output = self.final_activation(merged)
+        return final_output
 #model = HED()

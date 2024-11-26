@@ -130,7 +130,7 @@ def main():
 
         cam = camProbities(focal=8.5, WD=WD, CamSpecs=cam_specs)
         initial_resolution = cam.calculateEncoderResolution() * 8 # times 8 because we have
-        #initial_resolution = 7535
+        initial_resolution = 3141
         # 2 rising edge channels and pulse every 4 encode tick.
 
         print(f"Initial resolution: {initial_resolution}")
@@ -144,7 +144,7 @@ def main():
 
         while True:
             #image = camera.capture_image()
-            image = load_image("road_anomaly_detector/main/calibration/enoder_test_1.png")
+            image = load_image("/home/crackscope/Road-Anomaly-Detector/road_anomaly_detector/main/calibration/Encoder/captured_image.png")
             print("Picture taken...")
 
             height_px, width_px, _ = paper_size(image, lower=235, dispay=True, blurEn=False, morphEn=False)

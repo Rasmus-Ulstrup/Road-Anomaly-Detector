@@ -1,13 +1,13 @@
 // Pin definitions for the encoder channels and output
 const int encoderPinA = 2;  
 const int encoderPinB = 3;  
-const int lineRatePin = 8;  
-
+const int lineRatePinA = 8;  
+const int lineRatePinB = 9;
 // Constants
-const int Resolution_H = 4096;    // Horizontal resolution in pixels
-const float Pixel_size = 3.5;     // Pixel size in micrometers (µm)
+const int Resolution_H = 2048;    // Horizontal resolution in pixels
+const float Pixel_size = 7;     // Pixel size in micrometers (µm)
 const float Focal = 8.5;          // Focal length in millimeters (mm)
-const float defaultWD = 0.784;      // Default working distance in meters
+const float defaultWD = 0.915;      // Default working distance in meters
 
 // Function prototype
 float calculateSpatialResolution(float WD);
@@ -20,12 +20,14 @@ float fieldOfView;                // Field of view in millimeters
 float spatialResolution;          // Spatial resolution in meters per pixel
 
 volatile int16_t encoderTicks = 0;
+volatile int16_t encoderTicks_camera = 0;
 static int16_t encoderThreshold = 4*2;
 int16_t encoderAll = 0;
 
 
-unsigned long lastTriggerTime = 0;
-const unsigned long pulseDurationMicros = 150;  // 10 microseconds for the pulse
+unsigned long lastTriggerTime_light = 0;
+unsigned long lastTriggerTime_camera = 0;
+const unsigned long pulseDurationMicros = 25;  // 10 microseconds for the pulse
 
 void setup() {
   Serial.begin(9600);
@@ -57,7 +59,8 @@ void setup() {
   Serial.print("Spatial Resolution (m/pixel): ");
   Serial.println(spatialResolution, 12);  // 6 decimal places for precision
 
-  pinMode(lineRatePin, OUTPUT);
+  pinMode(lineRatePinA, OUTPUT);
+  pinMode(lineRatePinB, OUTPUT);
   pinMode(encoderPinA, INPUT_PULLUP);
   pinMode(encoderPinB, INPUT_PULLUP);
 
@@ -69,18 +72,29 @@ void setup() {
 void loop() {
   if (encoderTicks >= encoderThreshold) {
     encoderTicks = 0;  // Reset encoder count
-    digitalWrite(lineRatePin, HIGH);  // Trigger camera
-    lastTriggerTime = micros();  // Record the time of the trigger
+    digitalWrite(lineRatePinA, HIGH);  // Trigger camera
+    lastTriggerTime_light = micros();  // Record the time of the trigger
+  }
+  if (encoderTicks_camera>=encoderThreshold) {
+    encoderTicks_camera=0;
+    digitalWrite(lineRatePinB, HIGH);
+    lastTriggerTime_camera = micros();
   }
 
   // Check if it's time to pull the lineRatePin back to LOW
-  if (digitalRead(lineRatePin) == HIGH && (micros() - lastTriggerTime) >= pulseDurationMicros) {
-    digitalWrite(lineRatePin, LOW);  // Reset trigger
+  if (digitalRead(lineRatePinA) == HIGH && (micros() - lastTriggerTime_light) >= pulseDurationMicros) {
+    digitalWrite(lineRatePinA, LOW);  // Reset trigger
+    lastTriggerTime_light=0;
+  }
+  if (digitalRead(lineRatePinB) == HIGH && (micros() - lastTriggerTime_camera) >= pulseDurationMicros) {
+    digitalWrite(lineRatePinB, LOW);  // Reset trigger
+    lastTriggerTime_camera=0;
   }
 }
 
 void updateEncoder() {
-  encoderTicks++;  
+  encoderTicks++;
+  encoderTicks_camera+=2;
 }
 
 float calculateSpatialResolution(float WD) {
