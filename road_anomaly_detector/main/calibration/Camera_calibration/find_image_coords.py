@@ -30,7 +30,7 @@ def find_line_x(image,threshold_value=100):
         y = mean_image[start_x - 3 : end_x + 4]
         x = range(0, len(y))
         if len(y) > 5:
-            tck = interpolate.splrep(x, y, s=0, k=5) 
+            tck = interpolate.splrep(x, y, s=0, k=2) 
 
             x_new = np.linspace(min(x), max(x), 100)
             y_fit = interpolate.BSpline(*tck)(x_new)
@@ -47,19 +47,19 @@ def find_line_x(image,threshold_value=100):
         else:
             x_cross.append(0)
 
-        # plt.plot(x, y, 'ro', label="original")
-        # plt.plot(x, y, 'b', label="linear interpolation")
-        # plt.title("Target data")
-        # plt.legend(loc='best', fancybox=True, shadow=True)
-        # plt.grid()
-        # plt.show() 
+        plt.plot(x, y, 'ro', label="original")
+        plt.plot(x, y, 'b', label="linear interpolation")
+        plt.title("Target data")
+        plt.legend(loc='best', fancybox=True, shadow=True)
+        plt.grid()
+        plt.show() 
 
-        # plt.title("BSpline curve fitting")
-        # plt.plot(x, y, 'ro', label="original")
-        # plt.plot(x_new, y_fit, '-c', label="B-spline")
-        # plt.legend(loc='best', fancybox=True, shadow=True)
-        # plt.grid()
-        # plt.show()
+        plt.title("BSpline curve fitting")
+        plt.plot(x, y, 'ro', label="original")
+        plt.plot(x_new, y_fit, '-c', label="B-spline")
+        plt.legend(loc='best', fancybox=True, shadow=True)
+        plt.grid()
+        plt.show()
 
 
     return x_cross
@@ -85,7 +85,7 @@ def plot_cross_dot(image, x_cross):
 
 if __name__ == '__main__':
     #image = cv2.imread('road_anomaly_detector\main\calibration\Camera_calibration\calibration_image_0.png', cv2.IMREAD_GRAYSCALE)
-    image = cv2.imread('road_anomaly_detector/main/calibration/Camera_calibration/workspace/undistorted_image.jpg', cv2.IMREAD_GRAYSCALE)
+    image = cv2.imread('road_anomaly_detector\main\calibration\Camera_calibration\calibration_image.png', cv2.IMREAD_GRAYSCALE)
 
     x_cross = find_line_x(image,160)
     y_positions = np.full_like(x_cross, image.shape[0] // 2)
