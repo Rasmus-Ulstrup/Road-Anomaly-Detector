@@ -7,7 +7,7 @@ import threading
 import statistics
 from collections import deque
 class LineScanCamera:
-    def __init__(self, frame_height=1557, exposure=20, trigger='encoder', compression='png', max_capture_meters=50, gamma=1):
+    def __init__(self, frame_height=1557, exposure=20, trigger='encoder', compression='png', max_capture_meters=500, gamma=1):
         self.VIRTUAL_FRAME_HEIGHT = round(frame_height)  # Set from parameter
         self.trigger = trigger
         self.compression = compression
