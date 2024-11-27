@@ -1,0 +1,57 @@
+# config.yaml
+
+# Global parameters
+global:
+  epochs: 500
+  patience: 20
+  image_size: "512, 512"  # Default image size
+  test_size: 0.2          # Default test size
+
+# Define all datasets with their specific hyperparameters
+datasets:
+  cracktree200:
+    learning_rate: 0.001
+    batch_size: 4
+    # epochs: 30       # Uncomment to override global epochs for this dataset
+    # patience: 5      # Uncomment to override global patience for this dataset
+  forest:
+    learning_rate: 0.001
+    batch_size: 4
+  gaps384:
+    learning_rate: 0.0001
+    batch_size: 4
+    # patience: 15  # Override global patience for this dataset
+  cfd:
+    learning_rate: 0.001
+    batch_size: 1
+  mixed:
+    learning_rate: 0.001
+    batch_size: 4
+  GAPS10m:
+    learning_rate: 0.001
+    batch_size: 4
+
+# Define the list of models to be used
+models:
+  - HED
+  - FPN
+  - UNET
+
+# Define the list of loss functions, including parameters where necessary
+loss_functions:
+  - name: dice
+  - name: bce
+  - name: tversky
+    alpha: 0.7
+    gamma: 0.3
+  - name: tversky
+    alpha: 0.3
+    gamma: 0.7
+  - name: focal
+    alpha: 0.25
+    gamma: 2
+
+# Optional: Test configurations (if different from training)
+# test:
+#   batch_size: 4
+#   dataset_name: "test_dataset_name"

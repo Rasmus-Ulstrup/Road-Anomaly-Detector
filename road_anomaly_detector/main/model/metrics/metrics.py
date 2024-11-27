@@ -1,12 +1,17 @@
 import numpy as np
 import torch
 from sklearn.metrics import f1_score
-from scipy.spatial.distance import directed_hausdorff
+#from scipy.spatial.distance import directed_hausdorff
+from scipy.spatial import KDTree
 import matplotlib.pyplot as plt
 import os
 from PIL import Image  # Ensure this is imported at the top of the file
 from torchvision import transforms
 from numba import jit
+import time
+from config.config import Config
+import csv
+
 def binarize_output(output, threshold=0.5):
     return (output > threshold).astype(np.uint8)
 
@@ -29,21 +34,18 @@ def compute_metrics(predictions, ground_truths):
 
 
 def hausdorff_distance_95(prediction, ground_truth):
-    # Compute directed Hausdorff distance between two sets of points
     prediction = prediction.reshape(-1, 2)
     ground_truth = ground_truth.reshape(-1, 2)
-
-    # Using scipy's directed_hausdorff function
-    hausdorff_pred_to_gt = directed_hausdorff(prediction, ground_truth)[0]
-    hausdorff_gt_to_pred = directed_hausdorff(ground_truth, prediction)[0]
-
-    # Compute the 95th percentile of the Hausdorff distances
-    hd95 = np.percentile([hausdorff_pred_to_gt, hausdorff_gt_to_pred], 95)
-    
+    tree_pred = KDTree(prediction)
+    tree_gt = KDTree(ground_truth)
+    distances_pred_to_gt, _ = tree_gt.query(prediction, k=1, workers=-1)
+    distances_gt_to_pred, _ = tree_pred.query(ground_truth, k=1, workers=-1)
+    all_distances = np.concatenate([distances_pred_to_gt, distances_gt_to_pred])
+    hd95 = np.percentile(all_distances, 95)
     return hd95
 
 # Test evaluation function
-def evaluate_model(model, test_loader, device):
+def evaluate_model(Config, model, test_loader, device):
     model.eval()
     batch_metrics = {"correctness": [], "completeness": [], "quality": [], "f1": []
                      #, "hd95": []
@@ -82,17 +84,30 @@ def evaluate_model(model, test_loader, device):
             if i % max(1, total_batches // 10) == 0 or i == total_batches - 1:
                 print(f"Processed {i + 1}/{total_batches} batches ({(i + 1) / total_batches * 100:.2f}%)")
         
-    # Print final average metrics for the entire test set
-    print("\nTest Set Metrics:")
-    for metric, values in batch_metrics.items():
-        print(f"{metric.capitalize()}: {np.mean(values):.4f}")
-def default_transform():
-    return transforms.Compose([
-        transforms.Resize((448, 448)),
+    # Open the CSV file and write the metrics
+    with open(Config.metric_save_path, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Metric", "Average"])  # Header row
+
+        # Compute and write average metrics
+        print("\nTest Set Metrics:")
+        for metric, values in batch_metrics.items():
+            avg_value = np.mean(values)
+            print(f"{metric.capitalize()}: {avg_value:.4f}")
+            writer.writerow([metric.capitalize(), f"{avg_value:.4f}"])
+
+    print(f"\nMetrics saved to {Config.metric_save_path}")
+
+    
+    
+def default_transform(Config):
+    transform = transforms.Compose([
+        transforms.Resize(Config.image_size),
         transforms.ToTensor(),
     ])
+    return transform
 
-def run_inference(model, image_path, device, output_dir="./outputs"):
+def run_inference(Config, model, image_path, device, output_dir="./outputs"):
     """
     Run inference on a single image and save the predicted mask.
 
@@ -104,7 +119,7 @@ def run_inference(model, image_path, device, output_dir="./outputs"):
         output_dir (str): Directory to save the predicted mask.
     """
     model.eval()
-    transform = default_transform()  # Use the default transform here
+    transform = default_transform(Config)  # Use the default transform here
     with torch.no_grad():
         # Load and transform the image
         image = Image.open(image_path).convert("L")
@@ -136,7 +151,7 @@ def run_inference(model, image_path, device, output_dir="./outputs"):
         plt.imshow(combined_image, cmap="gray")
         plt.axis("off")
         plt.show()
-def run_inference_on_folder(model, folder_path, device, output_dir="./outputs"):
+def run_inference_on_folder(Config, model, folder_path, device, output_dir="./outputs"):
     """
     Run inference on all images in a folder and save the predicted masks.
 
@@ -149,7 +164,7 @@ def run_inference_on_folder(model, folder_path, device, output_dir="./outputs"):
     """
     # Ensure the model is in evaluation mode
     model.eval()
-    transform = default_transform()  # Use the default transform here
+    transform = default_transform(Config)  # Use the default transform here
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     # Loop through all images in the folder
@@ -188,3 +203,4 @@ def run_inference_on_folder(model, folder_path, device, output_dir="./outputs"):
                 # plt.imshow(combined_image, cmap="gray")
                 # plt.axis("off")
                 # plt.show()
+

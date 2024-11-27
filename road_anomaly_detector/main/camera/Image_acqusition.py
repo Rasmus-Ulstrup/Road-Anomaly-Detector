@@ -7,7 +7,7 @@ import threading
 import statistics
 from collections import deque
 class LineScanCamera:
-    def __init__(self, frame_height=1557, exposure=20, trigger='encoder', compression='png', max_capture_meters=50, gamma=1):
+    def __init__(self, frame_height=1557, exposure=20, trigger='encoder', compression='png', max_capture_meters=500, gamma=1):
         self.VIRTUAL_FRAME_HEIGHT = round(frame_height)  # Set from parameter
         self.trigger = trigger
         self.compression = compression
@@ -29,6 +29,9 @@ class LineScanCamera:
         self.stop_capture = False
         self.current_row = 0  # Keep track of current row being filled
 
+        # Queues to store image pairs
+        self.illum_queue = deque(maxlen=1)      # Store the latest illuminated image
+        self.non_illum_queue = deque(maxlen=1)  # Store the latest non-illuminated image
     def image_length_mode(self):
         try:
             print("!Remeber in this mode, variable frame_height is spatial resulotion for 1 meter!")
@@ -43,16 +46,22 @@ class LineScanCamera:
             print("Select a folder to save the captured image:")
             Tk().withdraw()  # Hide the root window
             folder_name = input("Enter a folder name: ")
-            self.output_folder = os.path.join("/home/crackscope/Road-Anomaly-Detector/Test", folder_name)
+            self.output_folder = os.path.join("/home/crackscope/Road-Anomaly-Detector/test", folder_name)
             os.makedirs(self.output_folder, exist_ok=True)  # Create the folder if it doesn't exist
         except TclError:
             print("Tkinter not available, please enter the path manually:")
             folder_name = input("Enter a folder name: ")
-            self.output_folder = os.path.join("/home/crackscope/Road-Anomaly-Detector/Test", folder_name)
+            self.output_folder = os.path.join("/home/crackscope/Road-Anomaly-Detector/test", folder_name)
             os.makedirs(self.output_folder, exist_ok=True)  # Create the folder if it doesn't exist
 
         self.output_path = os.path.join(self.output_folder, f"captured_image.{self.compression}")
         print(f"Image will be saved to: {self.output_path}")
+        
+        # Create subfolders for organized storage
+        self.processed_folder = os.path.join(self.output_folder, 'processed')
+        os.makedirs(self.processed_folder, exist_ok=True)
+
+        print(f"Processed images will be saved to: {self.processed_folder}")
 
     def initialize_camera(self):
         tl_factory = py.TlFactory.GetInstance()
@@ -107,6 +116,75 @@ class LineScanCamera:
 
         self.cam.StopGrabbing()
         return self.img
+    
+    def capture_image_machine_learning(self, correction):
+        self.cam.StartGrabbing()
+        self.output_folder = '/media/driveA/test/deep_learning_images'
+        
+        # Create a separate thread to listen for user input
+        input_thread = threading.Thread(target=self.wait_for_stop_signal)
+        input_thread.start()
+
+        print("Capturing images for machine learning. Press ENTER to stop capturing.")
+        
+        # Create an empty list to store scan lines for each image
+        current_image_lines = []
+        image_count = 0  # Counter for saved images
+        self.current_row = 1
+        old_array = 0
+        first_time_Flag = 1
+        # Capture loop
+        while not self.stop_capture:
+            if self.current_row >= self.MAX_FRAME_HEIGHT:
+                print("Reached maximum capture height.")
+                break
+
+            with self.cam.RetrieveResult(20000) as result:
+                if result.GrabSucceeded():
+                    # Use GetArray() to safely retrieve the scanline data
+                    out_array = result.GetArray()
+
+                    # if first_time_Flag == 1:
+                    #     first_time_Flag = 0
+                    #     if np.mean(out_array) < 20:
+                    #         print("First image is black")
+                    #         continue     
+
+                    # if (correction):
+                    #     if self.current_row % 2:
+                    #         curret_array =  old_array - out_array
+                    #         current_image_lines.append(curret_array)
+                    #     else:
+                    #         old_array = out_array
+                    # if (correction==False):
+                        #if self.current_row % 1:
+                    current_image_lines.append(out_array)
+                    
+                    # Check if we have enough lines to form a complete image
+                    if self.current_row == self.VIRTUAL_FRAME_HEIGHT:
+                        # Stack the lines to form an image
+                        captured_image = np.vstack(current_image_lines)
+
+                        # Save the image
+                        output_path = os.path.join(self.output_folder, f"VEJ_tILBAGE{image_count:05d}.{self.compression}")
+                        cv2.imwrite(output_path, captured_image)
+                        print(f"Saved image {image_count} at {output_path}")
+                        image_count += 1
+
+                        # Clear the current image lines to start a new image
+                        current_image_lines = []
+                        self.current_row = 0
+                        first_time_Flag = 1
+                else:
+                    print(f"Missing line at row {self.current_row}")
+
+                self.current_row += 1  # Move to the next row
+
+        self.cam.StopGrabbing()
+        input_thread.join()  # Ensure input thread completes
+
+        print("Capture stopped.")
+    
     def capture_image_dynamic(self):
         self.cam.StartGrabbing()
 
@@ -146,7 +224,7 @@ class LineScanCamera:
 
         # Return the valid part of the image, now fully captured and stacked
         return self.img
-    def capture_image_dynamic_auto(self, auto):
+    def capture_image_dynamic_auto(self):
         self.cam.StartGrabbing()
 
         # Create a separate thread to listen for user input
@@ -235,7 +313,7 @@ class LineScanCamera:
 
 def main():
     # Create instance of the LineScanCamera class
-    camera = LineScanCamera(frame_height=1557, exposure=25, trigger='encoder', compression='png')
+    camera = LineScanCamera(frame_height=2048, exposure=50, trigger='encoder', compression='png')
 
     #Set length mode:
     #camera.image_length_mode()
@@ -243,9 +321,11 @@ def main():
     # Capture and display the image
     #camera.capture_image(True)
     #camera.capture_image_dynamic()
-    camera.capture_image_dynamic_auto(True)
+    #camera.capture_image_dynamic_auto(True)
+    camera.capture_image_machine_learning(False)
+    #camera.capture_and_process_images()
     #camera.show_image()  # Optional: Display the image
-    camera.save_image()
+    #camera.save_image()
     
     # Cleanup the resources
     camera.cleanup()

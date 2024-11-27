@@ -1,11 +1,17 @@
 import torch
 import torch.nn.functional as F
 from config.config import Config
+import matplotlib.pyplot as plt
+import seaborn as sns
+import numpy as np
+import os
+import pprint
+
 
 class Trainer:
     def __init__(self, model, train_loader, val_loader, config):
         self.config = config  # Correctly assign the passed config object
-        self.model = model
+        self.model = model.to(config.device)
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.device = config.device  # Get device from the config object
@@ -13,14 +19,43 @@ class Trainer:
         self.learning_rate = config.learning_rate
         self.patience = config.patience
         self.model_save_path = config.model_save_path
+        self.loss_save_path = config.loss_save_path
 
         # Initialize optimizer
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
 
         # Select the loss function
-        self.loss_function = self.select_loss_function(config.loss_function)
+        #print(config.loss_kwargs)
+        self.loss_function = self.select_loss_function(config.loss_function, **config.loss_kwargs)
+
         self.best_val_loss = float('inf')
         self.epochs_without_improvement = 0
+
+        # Initialize lists to store losses
+        self.train_losses = []
+        self.val_losses = []
+
+        # Print all variables using the beautiful printer
+        self.print_trainer_variables()
+
+    def print_trainer_variables(self):
+        """Print all variables of the Trainer class in a structured format."""
+        variables = {
+            "Device": self.device,
+            "Number of Epochs": self.num_epochs,
+            "Learning Rate": self.learning_rate,
+            "Patience": self.patience,
+            "Model Save Path": self.model_save_path,
+            "Loss Save Path": self.loss_save_path,
+            "Optimizer": str(self.optimizer),
+            "Loss Function": self.loss_function.__name__ if hasattr(self.loss_function, '__name__') else str(self.loss_function),
+            "Best Validation Loss": self.best_val_loss,
+        }
+        print("\n" + "=" * 50)
+        print("Trainer Configuration")
+        print("=" * 50)
+        pprint.pprint(variables, indent=4, width=80)
+        print("=" * 50 + "\n")
 
     def select_loss_function(self, loss_type, **kwargs):
         """Select the loss function based on the string type."""
@@ -28,27 +63,40 @@ class Trainer:
             return self.dice_loss
         elif loss_type == "bce":
             # Set alpha to 0.9 by default if it's not passed in kwargs
-            pos_weight = kwargs.get('pos_weight', 0.9)  # Default to 0.9
-            pos_weight_tensor = torch.tensor([pos_weight]).to(self.device)  # Move pos_weight to the correct device
-            return torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight_tensor)
+            pos_weight = kwargs.get('pos_weight', 0.9)  # Adjust based on dataset
+            pos_weight_tensor = torch.tensor([pos_weight], dtype=torch.float32).to(self.device)
+            return torch.nn.BCELoss()
         elif loss_type == "ce":
             return self.cross_entropy_loss()
         elif loss_type == "focal":
-            alpha = kwargs.get('alpha', 0.995)  # Alpha to mittigate class imbalance
+            alpha = kwargs.get('alpha', 0.25)  # Alpha to mittigate class imbalance
             gamma = kwargs.get('gamma', 2)  # Default gamma for focusing on hard examples
-            return self.focal_loss(alpha, gamma)
+            print(f"Using Focal with alpha: {alpha} and gamma: {gamma}")
+            return self.focal_loss(gamma)
         elif loss_type == "tversky":
             alpha = kwargs.get('alpha', 0.3)  # Default alpha
-            beta = kwargs.get('beta', 0.7)   # Default beta
+            beta = kwargs.get('gamma', 0.7)   # Default beta (called gamma)
+            print(f"Using tversky with alpha: {alpha} and beta: {beta}")
             return self.tversky_loss(alpha, beta)
         else:
             raise ValueError(f"Loss function {loss_type} not supported")
 
     def dice_loss(self, pred, target, smooth=1e-5):
+        # Remove or comment out the debug statement after verification
+        # print(pred.unique())
+
         pred = pred.contiguous()
         target = target.contiguous()
-        intersection = (pred * target).sum(dim=2).sum(dim=2)
-        dice = (2. * intersection + smooth) / (pred.sum(dim=2).sum(dim=2) + target.sum(dim=2).sum(dim=2) + smooth)
+        
+        # Compute intersection and sums over spatial dimensions (height and width)
+        intersection = (pred * target).sum(dim=(2, 3))
+        sum_pred = pred.sum(dim=(2, 3))
+        sum_target = target.sum(dim=(2, 3))
+        
+        # Compute Dice coefficient
+        dice = (2. * intersection + smooth) / (sum_pred + sum_target + smooth)
+        
+        # Return the average Dice loss over the batch
         return 1 - dice.mean()
 
     def cross_entropy_loss(self):
@@ -62,27 +110,24 @@ class Trainer:
         return ce_loss
 
 
-    def focal_loss(self, alpha, gamma):
+    def focal_loss(self, alpha=0.25, gamma=2):
         """Focal loss implementation for binary segmentation."""
         def fl_loss(inputs, targets):
-            inputs = inputs.contiguous()
-            targets = targets.contiguous()
-            
-            BCE_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+            # Sigmoid is already applied in the model
+            BCE_loss = F.binary_cross_entropy(inputs, targets, reduction='none')
             pt = torch.exp(-BCE_loss)  # Probability of being classified correctly
             loss = alpha * (1 - pt) ** gamma * BCE_loss
             return loss.mean()
-
+        
         return fl_loss
 
     def tversky_loss(self, alpha, beta, smooth=1e-5):
         def loss_fn(inputs, targets):
-            inputs = torch.sigmoid(inputs)  # Apply sigmoid for probabilities
             true_pos = (inputs * targets).sum(dim=(1, 2, 3))
             false_neg = ((1 - inputs) * targets).sum(dim=(1, 2, 3))
             false_pos = (inputs * (1 - targets)).sum(dim=(1, 2, 3))
 
-            tversky_index = (true_pos + smooth) / (
+            tversky_index = (true_pos + smooth) / ( 
                 true_pos + alpha * false_pos + beta * false_neg + smooth
             )
             return (1 - tversky_index).mean()
@@ -111,6 +156,10 @@ class Trainer:
                 self.optimizer.step()
                 train_loss += loss.item()
             
+            # Calculate average training loss for the epoch
+            avg_train_loss = train_loss / len(self.train_loader)
+            self.train_losses.append(avg_train_loss)
+
             # Validation loop
             self.model.eval()
             val_loss = 0
@@ -125,11 +174,17 @@ class Trainer:
                     else:
                         val_loss += self.loss_function(val_outputs, val_masks)
                 
-                val_loss /= len(self.val_loader)
+                avg_val_loss = val_loss / len(self.val_loader)
+                self.val_losses.append(avg_val_loss)
             
             # Print stats and check for improvement
-            print(f"Epoch [{epoch + 1}/{self.config.epochs}], Train Loss: {train_loss / len(self.train_loader):.4f}, Val Loss: {val_loss:.4f}")
-            self._check_improvement(val_loss)
+            print(f"Epoch [{epoch + 1}/{self.config.epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
+            should_stop = self._check_improvement(avg_val_loss)
+            if should_stop:
+                break
+
+        # After training completes, plot the losses
+        self.plot_losses()
 
     def _check_improvement(self, val_loss):
         """Check if the model improved and handle early stopping."""
@@ -146,4 +201,51 @@ class Trainer:
             print(f"Early stopping after {self.epochs_without_improvement} epochs without improvement.")
             print(f"Best validation loss: {self.best_val_loss:.4f}")
             print(f"Model saved to {self.model_save_path}")
-            exit()
+            return True  # Indicate that training should stop
+        return False  # Continue training
+
+    def plot_losses(self):
+        """Plot training and validation losses over epochs."""
+
+        # Convert all loss values to floats if they aren't already
+        train_losses = [loss if isinstance(loss, float) else loss.cpu().item() for loss in self.train_losses]
+        val_losses = [loss if isinstance(loss, float) else loss.cpu().item() for loss in self.val_losses]
+        
+        # save data
+        np.savetxt(os.path.join(self.config.base_save_path, 'train_losses.csv'), train_losses, delimiter=",", header="Training Loss", comments="")
+        np.savetxt(os.path.join(self.config.base_save_path, 'val_losses.csv'), val_losses, delimiter=",", header="Validation Loss", comments="")
+
+        sns.set_theme()
+        sns.set_style("darkgrid")
+        sns.set_context("paper", font_scale=1.5)  # Increase font size
+
+        plt.figure(figsize=(10, 6))  # Larger figure size
+        plt.plot(
+            range(1, len(train_losses) + 1),
+            train_losses,
+            label='Training Loss',
+            color='tab:blue',
+            marker='o',
+            linestyle='-'
+        )
+        plt.plot(
+            range(1, len(val_losses) + 1),
+            val_losses,
+            label='Validation Loss',
+            color='tab:orange',
+            marker='s',
+            linestyle='--'
+        )
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title('Training and Validation Loss Over Epochs')
+        plt.legend(loc='upper right')
+        plt.locator_params(axis='x', nbins=15)  # Increase number of ticks on x-axis
+        plt.locator_params(axis='y', nbins=10)  # Increase number of ticks on y-axis
+        plt.ylim([0.1, 0.9])
+        
+        # Save
+        plt.tight_layout()
+        plt.savefig(self.loss_save_path, format='png', dpi=300)
+        plt.close()
+        print(f"Loss plot saved to {self.loss_save_path}")

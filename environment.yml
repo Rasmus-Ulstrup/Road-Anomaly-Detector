@@ -24,6 +24,8 @@ dependencies:
   - scikit-learn  # Useful for machine learning models
   - keras  # Added Keras for deep learning
   - pillow  # Added Pillow for image processing
+  - seaborn #Beatiful plots
+  - albumentations #argumentation
 
   - pip:
     - black

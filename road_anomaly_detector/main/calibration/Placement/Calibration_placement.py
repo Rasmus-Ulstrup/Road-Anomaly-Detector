@@ -96,7 +96,7 @@ def PlacementCalibration(image, average_if_even=True):
     # Check if x_coords_sorted has enough elements
     if n == 0:
         print("Error: x_coords_sorted is empty.")
-        return np.array([1,1]), np.array([1,1]), np.array([1])
+        return np.array([1,1]), np.array([1,1]), np.array([1]), np.array([[1,1]])
     elif n == 1:
         middle_value = x_coords_sorted[0]
     elif n % 2 == 1:
@@ -118,9 +118,11 @@ def PlacementCalibration(image, average_if_even=True):
     #print("Distances between consecutive x-coordinates:", distances)
     h = 0.025
     l = 0.200
-
-    pattern_space = feature_points_correspondences(np.array(x_coords),h,l)
-
+    if len(x_coords) > 20:
+        pattern_space = feature_points_correspondences(np.array(x_coords),h,l)
+    else:
+        pattern_space = np.array([0,0])
+    
     return x_coords_sorted, distances, middle_value, pattern_space
 
 def update_plot(ax_image, ax_pattern, ax_distances, image, x_cross, middle_line_coordinates, distances_between_centers, pattern):
@@ -163,20 +165,20 @@ def main():
     plt.ion()
     fig, (ax_image, ax_text, ax_distances) = plt.subplots(3, 1, figsize=(10, 8))
 
-    #camera = LineScanCamera(trigger='', exposure=40, frame_height=2048, compression='png', gamma=3.98)
+    camera = LineScanCamera(trigger='', exposure=22, frame_height=2048, compression='png', gamma=1)
 
-    image = cv2.imread('road_anomaly_detector/main/calibration/Camera_calibration/calibration_image_0.png', cv2.IMREAD_GRAYSCALE)
-    if image is not None:
-        print("Image loaded successfully")
-    else:
-        print("Image loading failed")
+    # image = cv2.imread('road_anomaly_detector/main/calibration/Camera_calibration/calibration_image_0.png', cv2.IMREAD_GRAYSCALE)
+    # if image is not None:
+    #     print("Image loaded successfully")
+    # else:
+    #     print("Image loading failed")
 
     while True:
         #image = camera.capture_image()
         
 
         # Perform placement calibration
-        x_coords, distances, middle, pattern = PlacementCalibration(image)
+        x_coords, distances, middle,  pattern = PlacementCalibration(image)
         
 
         # Update the plot with new data

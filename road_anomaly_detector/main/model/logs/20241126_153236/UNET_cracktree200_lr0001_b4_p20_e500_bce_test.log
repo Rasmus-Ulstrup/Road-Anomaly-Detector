@@ -1,0 +1,25 @@
+Training with argumentation
+/home/crackscope/Road-Anomaly-Detector/road_anomaly_detector/main/model/main.py:115: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  config.model.load_state_dict(torch.load(args.model_path))
+Images min: 0.14509804546833038 Images max: 1.0
+Mask min: 0.0 Mask max: 1.0
+done with inference
+Processed 1/6 batches (16.67%)
+done with inference
+Processed 2/6 batches (33.33%)
+done with inference
+Processed 3/6 batches (50.00%)
+done with inference
+Processed 4/6 batches (66.67%)
+done with inference
+Processed 5/6 batches (83.33%)
+done with inference
+Processed 6/6 batches (100.00%)
+
+Test Set Metrics:
+Correctness: 0.5219
+Completeness: 0.0526
+Quality: 0.0495
+F1: 0.0928
+
+Metrics saved to model_files/UNET_cracktree200_lr0001_b4_p20_e500_bce/metrics.csv
