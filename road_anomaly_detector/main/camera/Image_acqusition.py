@@ -117,76 +117,7 @@ class LineScanCamera:
         self.cam.StopGrabbing()
         return self.img
     
-    def capture_and_process_images(self):
-        self.output_folder = '/media/driveA/test/processed_images'
-        self.cam.StartGrabbing(py.GrabStrategy_LatestImageOnly)
-        print("Started grabbing images in continuous loop.")
-        image_count = 0
-        processed_count = 0
-        previous_illum_image = None  # To store the last illuminated image
-        current_image_lines = []     # To accumulate scanlines for the current image
-        # Create a separate thread to listen for user input
-        input_thread = threading.Thread(target=self.wait_for_stop_signal)
-        input_thread.start()
-        try:
-            while not self.stop_capture:
-                with self.cam.RetrieveResult(5000) as result:
-                    if result.GrabSucceeded():
-                        line = result.GetArray()
-                        current_image_lines.append(line)
-
-                        if len(current_image_lines) >= self.VIRTUAL_FRAME_HEIGHT:
-                            # Stack the accumulated lines to form a complete image
-                            image = np.vstack(current_image_lines)
-
-
-                            # Determine if the current image is illuminated or not
-                            if image_count % 2 == 0:
-                                # Illuminated Image
-                                previous_illum_image = image.copy()
-                                print(f"Captured illuminated image {image_count}.")
-
-                                # Optionally, save the illuminated image
-                                illum_image_path = os.path.join(self.output_folder, f"illuminated_image_{image_count:05d}.{self.compression}")
-                                cv2.imwrite(illum_image_path, image)
-                                print(f"Saved illuminated image {image_count} at {illum_image_path}")
-                            else:
-                                # Non-Illuminated Image
-                                print(f"Captured non-illuminated image {image_count}.")
-
-                                # Optionally, save the non-illuminated image
-                                non_illum_image_path = os.path.join(self.output_folder, f"non_illuminated_image_{image_count:05d}.{self.compression}")
-                                cv2.imwrite(non_illum_image_path, image)
-                                print(f"Saved non-illuminated image {image_count} at {non_illum_image_path}")
-
-                                # Perform subtraction with the previous illuminated image
-                                if previous_illum_image is not None:
-                                    processed_image = cv2.subtract(previous_illum_image, image)
-                                    
-                                    # Optional: Apply thresholding to enhance cracks
-                                    #_, processed_image = cv2.threshold(processed_image, 50, 255, cv2.THRESH_BINARY)
-
-                                    # Save the processed image
-                                    output_path = os.path.join(self.output_folder, f"image_{processed_count:05d}.{self.compression}")
-                                    cv2.imwrite(output_path, processed_image)
-                                    print(f"Saved processed image {processed_count} at {output_path}")
-                                    processed_count += 1
-                                else:
-                                    print(f"No previous illuminated image to subtract with for image_count {image_count}.")
-
-                            # Reset for the next image
-                            current_image_lines = []
-                            image_count += 1
-                    else:
-                        print("Failed to grab line.")
-        except Exception as e:
-            print(f"An error occurred during image capture: {e}")
-        self.cam.StopGrabbing()
-        input_thread.join()  # Ensure input thread completes
-
-        print("Capture stopped.")
-        print("Stopped grabbing images.")
-    def capture_image_machine_learning(self):
+    def capture_image_machine_learning(self, correction):
         self.cam.StartGrabbing()
         self.output_folder = '/media/driveA/test/deep_learning_images'
         
@@ -199,7 +130,9 @@ class LineScanCamera:
         # Create an empty list to store scan lines for each image
         current_image_lines = []
         image_count = 0  # Counter for saved images
-
+        self.current_row = 1
+        old_array = 0
+        first_time_Flag = 1
         # Capture loop
         while not self.stop_capture:
             if self.current_row >= self.MAX_FRAME_HEIGHT:
@@ -210,21 +143,38 @@ class LineScanCamera:
                 if result.GrabSucceeded():
                     # Use GetArray() to safely retrieve the scanline data
                     out_array = result.GetArray()
-                    current_image_lines.append(out_array)
 
+                    # if first_time_Flag == 1:
+                    #     first_time_Flag = 0
+                    #     if np.mean(out_array) < 20:
+                    #         print("First image is black")
+                    #         continue     
+
+                    # if (correction):
+                    #     if self.current_row % 2:
+                    #         curret_array =  old_array - out_array
+                    #         current_image_lines.append(curret_array)
+                    #     else:
+                    #         old_array = out_array
+                    # if (correction==False):
+                        #if self.current_row % 1:
+                    current_image_lines.append(out_array)
+                    
                     # Check if we have enough lines to form a complete image
-                    if len(current_image_lines) == self.VIRTUAL_FRAME_HEIGHT:
+                    if self.current_row == self.VIRTUAL_FRAME_HEIGHT:
                         # Stack the lines to form an image
                         captured_image = np.vstack(current_image_lines)
 
                         # Save the image
-                        output_path = os.path.join(self.output_folder, f"image_{image_count:05d}.{self.compression}")
+                        output_path = os.path.join(self.output_folder, f"VEJ_tILBAGE{image_count:05d}.{self.compression}")
                         cv2.imwrite(output_path, captured_image)
                         print(f"Saved image {image_count} at {output_path}")
                         image_count += 1
 
                         # Clear the current image lines to start a new image
                         current_image_lines = []
+                        self.current_row = 0
+                        first_time_Flag = 1
                 else:
                     print(f"Missing line at row {self.current_row}")
 
@@ -363,19 +313,19 @@ class LineScanCamera:
 
 def main():
     # Create instance of the LineScanCamera class
-    camera = LineScanCamera(frame_height=2048, exposure=20, trigger='encoder', compression='png')
+    camera = LineScanCamera(frame_height=2048, exposure=50, trigger='encoder', compression='png')
 
     #Set length mode:
     #camera.image_length_mode()
     
     # Capture and display the image
     #camera.capture_image(True)
-    camera.capture_image_dynamic()
+    #camera.capture_image_dynamic()
     #camera.capture_image_dynamic_auto(True)
-    #camera.capture_image_machine_learning()
+    camera.capture_image_machine_learning(False)
     #camera.capture_and_process_images()
     #camera.show_image()  # Optional: Display the image
-    camera.save_image()
+    #camera.save_image()
     
     # Cleanup the resources
     camera.cleanup()

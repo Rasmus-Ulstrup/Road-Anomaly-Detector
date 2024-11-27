@@ -23,11 +23,11 @@ def find_line_x(image,threshold_value=100):
             start = None
 
     mean_image = image.mean(axis=0).astype(np.uint8)  # Convert to uint8 if needed
-
+    k = 10
     x_cross = []
     for start_x, end_x in clusters:
         #print(f"Cluster from x = {start_x} to x = {end_x}")
-        y = mean_image[start_x - 3 : end_x + 4]
+        y = mean_image[start_x - k : end_x + k]
         x = range(0, len(y))
         if len(y) > 5:
             tck = interpolate.splrep(x, y, s=0, k=5) 
@@ -43,7 +43,7 @@ def find_line_x(image,threshold_value=100):
             #print(f"The minimum value of y_fit is: {min_value}")
             #print(f"This minimum value occurs at x = {x_at_min}")
 
-            x_cross.append(x_at_min + start_x - 3)
+            x_cross.append(x_at_min + start_x - k)
         else:
             x_cross.append(0)
 

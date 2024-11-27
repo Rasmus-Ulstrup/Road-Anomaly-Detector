@@ -1,0 +1,183 @@
+Training with argumentation
+Images min: 0.1764705926179886 Images max: 0.9372549057006836
+Mask min: 0.0 Mask max: 1.0
+Using tversky with alpha: 0.3 and beta: 0.7
+
+==================================================
+Trainer Configuration
+==================================================
+{   'Best Validation Loss': inf,
+    'Device': device(type='cuda'),
+    'Learning Rate': 0.001,
+    'Loss Function': 'loss_fn',
+    'Loss Save Path': '/home/crackscope/Road-Anomaly-Detector/road_anomaly_detector/main/model/model_files/UNET_forest_lr0001_b4_p20_e500_tversky/loss_plot.png',
+    'Model Save Path': '/home/crackscope/Road-Anomaly-Detector/road_anomaly_detector/main/model/model_files/UNET_forest_lr0001_b4_p20_e500_tversky/model.pth',
+    'Number of Epochs': 500,
+    'Optimizer': 'Adam (\n'
+                 'Parameter Group 0\n'
+                 '    amsgrad: False\n'
+                 '    betas: (0.9, 0.999)\n'
+                 '    capturable: False\n'
+                 '    differentiable: False\n'
+                 '    eps: 1e-08\n'
+                 '    foreach: None\n'
+                 '    fused: None\n'
+                 '    lr: 0.001\n'
+                 '    maximize: False\n'
+                 '    weight_decay: 0\n'
+                 ')',
+    'Patience': 20}
+==================================================
+
+Epoch [1/500], Train Loss: 0.7991, Val Loss: 0.9135
+Model improved
+Epoch [2/500], Train Loss: 0.7203, Val Loss: 0.8366
+Model improved
+Epoch [3/500], Train Loss: 0.6766, Val Loss: 0.7325
+Model improved
+Epoch [4/500], Train Loss: 0.6203, Val Loss: 0.7934
+No improvement in validation loss for 1 epochs.
+Epoch [5/500], Train Loss: 0.5922, Val Loss: 0.8841
+No improvement in validation loss for 2 epochs.
+Epoch [6/500], Train Loss: 0.6075, Val Loss: 0.8226
+No improvement in validation loss for 3 epochs.
+Epoch [7/500], Train Loss: 0.5752, Val Loss: 0.9226
+No improvement in validation loss for 4 epochs.
+Epoch [8/500], Train Loss: 0.5465, Val Loss: 0.6526
+Model improved
+Epoch [9/500], Train Loss: 0.4968, Val Loss: 0.5818
+Model improved
+Epoch [10/500], Train Loss: 0.4987, Val Loss: 0.5671
+Model improved
+Epoch [11/500], Train Loss: 0.4848, Val Loss: 0.5397
+Model improved
+Epoch [12/500], Train Loss: 0.4742, Val Loss: 0.4593
+Model improved
+Epoch [13/500], Train Loss: 0.4601, Val Loss: 0.5056
+No improvement in validation loss for 1 epochs.
+Epoch [14/500], Train Loss: 0.4386, Val Loss: 0.4021
+Model improved
+Epoch [15/500], Train Loss: 0.4246, Val Loss: 0.4531
+No improvement in validation loss for 1 epochs.
+Epoch [16/500], Train Loss: 0.4185, Val Loss: 0.4460
+No improvement in validation loss for 2 epochs.
+Epoch [17/500], Train Loss: 0.4201, Val Loss: 0.5407
+No improvement in validation loss for 3 epochs.
+Epoch [18/500], Train Loss: 0.4123, Val Loss: 0.6344
+No improvement in validation loss for 4 epochs.
+Epoch [19/500], Train Loss: 0.4312, Val Loss: 0.3690
+Model improved
+Epoch [20/500], Train Loss: 0.4003, Val Loss: 0.5698
+No improvement in validation loss for 1 epochs.
+Epoch [21/500], Train Loss: 0.3905, Val Loss: 0.5122
+No improvement in validation loss for 2 epochs.
+Epoch [22/500], Train Loss: 0.3778, Val Loss: 0.5097
+No improvement in validation loss for 3 epochs.
+Epoch [23/500], Train Loss: 0.3709, Val Loss: 0.3581
+Model improved
+Epoch [24/500], Train Loss: 0.3684, Val Loss: 0.3938
+No improvement in validation loss for 1 epochs.
+Epoch [25/500], Train Loss: 0.3864, Val Loss: 0.4075
+No improvement in validation loss for 2 epochs.
+Epoch [26/500], Train Loss: 0.3747, Val Loss: 0.3533
+Model improved
+Epoch [27/500], Train Loss: 0.3712, Val Loss: 0.6363
+No improvement in validation loss for 1 epochs.
+Epoch [28/500], Train Loss: 0.3722, Val Loss: 0.3844
+No improvement in validation loss for 2 epochs.
+Epoch [29/500], Train Loss: 0.3768, Val Loss: 0.5433
+No improvement in validation loss for 3 epochs.
+Epoch [30/500], Train Loss: 0.3617, Val Loss: 0.4739
+No improvement in validation loss for 4 epochs.
+Epoch [31/500], Train Loss: 0.3632, Val Loss: 0.3566
+No improvement in validation loss for 5 epochs.
+Epoch [32/500], Train Loss: 0.3545, Val Loss: 0.4307
+No improvement in validation loss for 6 epochs.
+Epoch [33/500], Train Loss: 0.3644, Val Loss: 0.4533
+No improvement in validation loss for 7 epochs.
+Epoch [34/500], Train Loss: 0.3528, Val Loss: 0.3998
+No improvement in validation loss for 8 epochs.
+Epoch [35/500], Train Loss: 0.3603, Val Loss: 0.3572
+No improvement in validation loss for 9 epochs.
+Epoch [36/500], Train Loss: 0.3565, Val Loss: 0.4164
+No improvement in validation loss for 10 epochs.
+Epoch [37/500], Train Loss: 0.3498, Val Loss: 0.4585
+No improvement in validation loss for 11 epochs.
+Epoch [38/500], Train Loss: 0.3387, Val Loss: 0.3344
+Model improved
+Epoch [39/500], Train Loss: 0.3430, Val Loss: 0.3842
+No improvement in validation loss for 1 epochs.
+Epoch [40/500], Train Loss: 0.3568, Val Loss: 0.3420
+No improvement in validation loss for 2 epochs.
+Epoch [41/500], Train Loss: 0.3440, Val Loss: 0.3368
+No improvement in validation loss for 3 epochs.
+Epoch [42/500], Train Loss: 0.3499, Val Loss: 0.3413
+No improvement in validation loss for 4 epochs.
+Epoch [43/500], Train Loss: 0.3445, Val Loss: 0.3585
+No improvement in validation loss for 5 epochs.
+Epoch [44/500], Train Loss: 0.3428, Val Loss: 0.3506
+No improvement in validation loss for 6 epochs.
+Epoch [45/500], Train Loss: 0.3458, Val Loss: 0.3779
+No improvement in validation loss for 7 epochs.
+Epoch [46/500], Train Loss: 0.3493, Val Loss: 0.5028
+No improvement in validation loss for 8 epochs.
+Epoch [47/500], Train Loss: 0.3368, Val Loss: 0.3352
+No improvement in validation loss for 9 epochs.
+Epoch [48/500], Train Loss: 0.3438, Val Loss: 0.3832
+No improvement in validation loss for 10 epochs.
+Epoch [49/500], Train Loss: 0.3482, Val Loss: 0.3582
+No improvement in validation loss for 11 epochs.
+Epoch [50/500], Train Loss: 0.3359, Val Loss: 0.3747
+No improvement in validation loss for 12 epochs.
+Epoch [51/500], Train Loss: 0.3362, Val Loss: 0.3360
+No improvement in validation loss for 13 epochs.
+Epoch [52/500], Train Loss: 0.3416, Val Loss: 0.3653
+No improvement in validation loss for 14 epochs.
+Epoch [53/500], Train Loss: 0.3392, Val Loss: 0.3352
+No improvement in validation loss for 15 epochs.
+Epoch [54/500], Train Loss: 0.3370, Val Loss: 0.3216
+Model improved
+Epoch [55/500], Train Loss: 0.3390, Val Loss: 0.4793
+No improvement in validation loss for 1 epochs.
+Epoch [56/500], Train Loss: 0.3460, Val Loss: 0.3297
+No improvement in validation loss for 2 epochs.
+Epoch [57/500], Train Loss: 0.3433, Val Loss: 0.3487
+No improvement in validation loss for 3 epochs.
+Epoch [58/500], Train Loss: 0.3391, Val Loss: 0.3364
+No improvement in validation loss for 4 epochs.
+Epoch [59/500], Train Loss: 0.3384, Val Loss: 0.3250
+No improvement in validation loss for 5 epochs.
+Epoch [60/500], Train Loss: 0.3314, Val Loss: 0.3383
+No improvement in validation loss for 6 epochs.
+Epoch [61/500], Train Loss: 0.3334, Val Loss: 0.3275
+No improvement in validation loss for 7 epochs.
+Epoch [62/500], Train Loss: 0.3291, Val Loss: 0.3908
+No improvement in validation loss for 8 epochs.
+Epoch [63/500], Train Loss: 0.3362, Val Loss: 0.3283
+No improvement in validation loss for 9 epochs.
+Epoch [64/500], Train Loss: 0.3358, Val Loss: 0.5194
+No improvement in validation loss for 10 epochs.
+Epoch [65/500], Train Loss: 0.3485, Val Loss: 0.3824
+No improvement in validation loss for 11 epochs.
+Epoch [66/500], Train Loss: 0.3359, Val Loss: 0.3363
+No improvement in validation loss for 12 epochs.
+Epoch [67/500], Train Loss: 0.3352, Val Loss: 0.3264
+No improvement in validation loss for 13 epochs.
+Epoch [68/500], Train Loss: 0.3354, Val Loss: 0.3539
+No improvement in validation loss for 14 epochs.
+Epoch [69/500], Train Loss: 0.3232, Val Loss: 0.3310
+No improvement in validation loss for 15 epochs.
+Epoch [70/500], Train Loss: 0.3297, Val Loss: 0.3242
+No improvement in validation loss for 16 epochs.
+Epoch [71/500], Train Loss: 0.3337, Val Loss: 0.3407
+No improvement in validation loss for 17 epochs.
+Epoch [72/500], Train Loss: 0.3258, Val Loss: 0.3334
+No improvement in validation loss for 18 epochs.
+Epoch [73/500], Train Loss: 0.3311, Val Loss: 0.3330
+No improvement in validation loss for 19 epochs.
+Epoch [74/500], Train Loss: 0.3346, Val Loss: 0.3224
+No improvement in validation loss for 20 epochs.
+Early stopping after 20 epochs without improvement.
+Best validation loss: 0.3216
+Model saved to /home/crackscope/Road-Anomaly-Detector/road_anomaly_detector/main/model/model_files/UNET_forest_lr0001_b4_p20_e500_tversky/model.pth
+Loss plot saved to /home/crackscope/Road-Anomaly-Detector/road_anomaly_detector/main/model/model_files/UNET_forest_lr0001_b4_p20_e500_tversky/loss_plot.png

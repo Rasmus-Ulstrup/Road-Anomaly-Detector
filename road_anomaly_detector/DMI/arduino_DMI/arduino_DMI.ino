@@ -11,8 +11,7 @@ const float defaultWD = 0.915;      // Default working distance in meters
 
 // Function prototype
 float calculateSpatialResolution(float WD);
-
-// Variables to store calculated values
+void updateEncoder();// Variables to store calculated values
 float WD;                         // Working distance in meters, input from user
 float pixelSize_mm;               // Pixel size in millimeters
 float sensorWidth_mm;             // Sensor width in millimeters
@@ -20,16 +19,16 @@ float fieldOfView;                // Field of view in millimeters
 float spatialResolution;          // Spatial resolution in meters per pixel
 
 volatile int16_t encoderTicks = 0;
-volatile int16_t encoderTicks_camera = 0;
 static int16_t encoderThreshold = 4*2;
 int16_t encoderAll = 0;
 
 
 unsigned long lastTriggerTime_light = 0;
 unsigned long lastTriggerTime_camera = 0;
-const unsigned long pulseDurationMicros = 25;  // 10 microseconds for the pulse
+const unsigned long pulseDurationMicros = 75;  // 10 microseconds for the pulse
 
 void setup() {
+  DDRB |= (1<<PB0) | (1<<PB1);
   Serial.begin(9600);
   Serial.println("Enter the working distance (WD) in meters (or wait 30 seconds for default):");
 
@@ -59,8 +58,8 @@ void setup() {
   Serial.print("Spatial Resolution (m/pixel): ");
   Serial.println(spatialResolution, 12);  // 6 decimal places for precision
 
-  pinMode(lineRatePinA, OUTPUT);
-  pinMode(lineRatePinB, OUTPUT);
+  // pinMode(lineRatePinA, OUTPUT);
+  // pinMode(lineRatePinB, OUTPUT);
   pinMode(encoderPinA, INPUT_PULLUP);
   pinMode(encoderPinB, INPUT_PULLUP);
 
@@ -72,29 +71,27 @@ void setup() {
 void loop() {
   if (encoderTicks >= encoderThreshold) {
     encoderTicks = 0;  // Reset encoder count
-    digitalWrite(lineRatePinA, HIGH);  // Trigger camera
+    digitalWrite(53,1);
+    digitalWrite(52,1);
+    // PORTB |= (1<<PB0) | (1<<PB1);
+    // PORTB &= ~(1<<PB1);
+    digitalWrite(52,0);
     lastTriggerTime_light = micros();  // Record the time of the trigger
-  }
-  if (encoderTicks_camera>=encoderThreshold) {
-    encoderTicks_camera=0;
-    digitalWrite(lineRatePinB, HIGH);
-    lastTriggerTime_camera = micros();
   }
 
   // Check if it's time to pull the lineRatePin back to LOW
-  if (digitalRead(lineRatePinA) == HIGH && (micros() - lastTriggerTime_light) >= pulseDurationMicros) {
-    digitalWrite(lineRatePinA, LOW);  // Reset trigger
+  if  ((PORTB & (1 << PB0)) && (micros() - lastTriggerTime_light) >= pulseDurationMicros) {
+    // PORTB &=~(1<<PB0); //53 - lys
+    // PORTB |= (1<<PB1); //52 - cam
+    // PORTB &=~(1<<PB1);
+    digitalWrite(53,0);
+    digitalWrite(52,1);
+    digitalWrite(52,0);
     lastTriggerTime_light=0;
   }
-  if (digitalRead(lineRatePinB) == HIGH && (micros() - lastTriggerTime_camera) >= pulseDurationMicros) {
-    digitalWrite(lineRatePinB, LOW);  // Reset trigger
-    lastTriggerTime_camera=0;
-  }
 }
-
 void updateEncoder() {
   encoderTicks++;
-  encoderTicks_camera+=2;
 }
 
 float calculateSpatialResolution(float WD) {
