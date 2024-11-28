@@ -6,6 +6,20 @@ from models.FPN import FPN
 import os
 import re
 
+
+
+def sanitize_learning_rate(lr):
+    """
+    Converts the learning rate to a string without the decimal point.
+    
+    Args:
+        lr (float): Learning rate value.
+        
+    Returns:
+        str: Sanitized learning rate.
+    """
+    return str(lr).replace('.', '')
+
 class Config:
     def __init__(self, 
                  model_name, 
@@ -36,14 +50,45 @@ class Config:
             'alpha' : alpha,
             'gamma' : gamma
         }
-        # Define the model save path relative to the current working directory
-        self.base_save_path = os.path.join(os.getcwd(), 'model_files', 
-                                            f"{model_name}_{dataset_name}_lr{str(learning_rate).replace('.', '')}_b{batch_size}_p{patience}_e{epochs}_{loss_function}")
-        self.model_save_path = "NOT CHANGED"
-        self.metric_save_path = "NOT CHANGED"
-        self.loss_save_path = "NOT CHANGED"
+        
+
+        # Prepare loss suffix based on loss function type
+        loss_suffix = self._get_loss_suffix()
+
+        # Sanitize the learning rate
+        sanitized_lr = sanitize_learning_rate(self.learning_rate)
+
+        # Construct the base_save_path using the standardized format
+        # Format: "{model_name}_{dataset_name}_lr{sanitized_lr}_b{batch_size}_p{patience}_e{epochs}_{loss_suffix}"
+        self.base_save_path = os.path.join(
+            os.getcwd(), 
+            'model_files', 
+            f"{self.model_name}_{self.dataset_name}_lr{sanitized_lr}_b{self.batch_size}_p{self.patience}_e{self.epochs}_{loss_suffix}"
+        )
+
+
+        # Assign save paths (modify if different directories are needed)
+        self.model_save_path = self.base_save_path
+        self.metric_save_path = self.base_save_path
+        self.loss_save_path = self.base_save_path
+
         # Ensure the directory exists (create it if not)
-        os.makedirs(os.path.join(os.getcwd(), 'model_files'), exist_ok=True)
+        os.makedirs(os.path.dirname(self.base_save_path), exist_ok=True)
+
+    
+    def _get_loss_suffix(self):
+        """
+        Generates a suffix for the loss function based on its type and parameters.
+
+        Returns:
+            str: Loss suffix string.
+        """
+        if self.loss_function in ["tversky", "focal"]:
+            alpha = self.loss_kwargs.get('alpha', 0.25)
+            gamma = self.loss_kwargs.get('gamma', 2)
+            return f"{self.loss_function}_alpha{alpha}_gamma{gamma}"
+        else:
+            return self.loss_function
 
     def select_model(self):
         if self.model_name == "UNet_simple".lower():
