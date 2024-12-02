@@ -6,15 +6,16 @@ import os
 import threading
 import statistics
 from collections import deque
+import queue
 class LineScanCamera:
-    def __init__(self, frame_height=1557, exposure=20, trigger='encoder', compression='png', max_capture_meters=500, gamma=1):
+    def __init__(self, frame_height=1557, exposure=20, trigger='encoder', compression='png', gamma=1):
         self.VIRTUAL_FRAME_HEIGHT = round(frame_height)  # Set from parameter
         self.trigger = trigger
         self.compression = compression
         self.exposure = exposure
         self.gamma = gamma
 
-        self.MAX_FRAME_HEIGHT = int(max_capture_meters * frame_height)  # Pre-allocate for multiple meters
+
         # Initialize camera
         self.cam = self.initialize_camera()
         
@@ -28,10 +29,17 @@ class LineScanCamera:
         # Flag to stop capture loop
         self.stop_capture = False
         self.current_row = 0  # Keep track of current row being filled
+        
+        # Initialize queue and saver thread attributes
+        self.image_queue = queue.Queue()  # Queue to hold images to be saved
+        self.saver_thread = threading.Thread(target=self.save_images)
+        self.saver_thread.daemon = True  # Daemonize thread to exit with the main program
+        self.saver_thread.start()
 
-        # Queues to store image pairs
-        self.illum_queue = deque(maxlen=1)      # Store the latest illuminated image
-        self.non_illum_queue = deque(maxlen=1)  # Store the latest non-illuminated image
+        self.output_folder = '/media/driveA/test/deep_learning_images'
+        self.image_count=0
+        
+        
     def image_length_mode(self):
         try:
             print("!Remeber in this mode, variable frame_height is spatial resulotion for 1 meter!")
@@ -129,62 +137,72 @@ class LineScanCamera:
         
         # Create an empty list to store scan lines for each image
         current_image_lines = []
-        image_count = 0  # Counter for saved images
+        self.image_count = 0  # Counter for saved images
         self.current_row = 1
         old_array = 0
         first_time_Flag = 1
         # Capture loop
         while not self.stop_capture:
-            if self.current_row >= self.MAX_FRAME_HEIGHT:
-                print("Reached maximum capture height.")
-                break
-
             with self.cam.RetrieveResult(20000) as result:
                 if result.GrabSucceeded():
                     # Use GetArray() to safely retrieve the scanline data
                     out_array = result.GetArray()
-
-                    # if first_time_Flag == 1:
-                    #     first_time_Flag = 0
-                    #     if np.mean(out_array) < 20:
-                    #         print("First image is black")
-                    #         continue     
-
-                    # if (correction):
-                    #     if self.current_row % 2:
-                    #         curret_array =  old_array - out_array
-                    #         current_image_lines.append(curret_array)
-                    #     else:
-                    #         old_array = out_array
-                    # if (correction==False):
-                        #if self.current_row % 1:
-                    current_image_lines.append(out_array)
+                    if (correction):
+                        if self.current_row % 2:
+                            curret_array =  out_array - old_array
+                            current_image_lines.append(curret_array)
+                        else:
+                            old_array = out_array
+                    if (correction==False):
+                        if self.current_row % 2:
+                            current_image_lines.append(out_array)
                     
                     # Check if we have enough lines to form a complete image
-                    if self.current_row == self.VIRTUAL_FRAME_HEIGHT:
+                    if self.current_row == self.VIRTUAL_FRAME_HEIGHT*2:
                         # Stack the lines to form an image
                         captured_image = np.vstack(current_image_lines)
 
                         # Save the image
-                        output_path = os.path.join(self.output_folder, f"VEJ_tILBAGE{image_count:05d}.{self.compression}")
-                        cv2.imwrite(output_path, captured_image)
-                        print(f"Saved image {image_count} at {output_path}")
-                        image_count += 1
+                        output_path = os.path.join(self.output_folder, f"AAA{self.image_count:05d}.{self.compression}")
+                        self.image_count+=1
+                        # Enqueue the image for saving
+                        self.image_queue.put((captured_image, output_path, self.image_count))
 
                         # Clear the current image lines to start a new image
                         current_image_lines = []
                         self.current_row = 0
-                        first_time_Flag = 1
                 else:
                     print(f"Missing line at row {self.current_row}")
 
                 self.current_row += 1  # Move to the next row
 
         self.cam.StopGrabbing()
+        self.image_queue.put(None)
         input_thread.join()  # Ensure input thread completes
+        self.saver_thread.join()
 
         print("Capture stopped.")
     
+ 
+    def save_images(self):
+            """
+            Saver thread method that continuously listens for images in the queue
+            and saves them to disk.
+            """
+            while True:
+                item = self.image_queue.get()
+                if item is None:
+                    # Sentinel value received, exit the thread
+                    break
+                captured_image, output_path, self.image_count = item
+                try:
+                    cv2.imwrite(output_path, captured_image)
+                    print(f"Saved image {self.image_count} at {output_path}")
+                    
+                except Exception as e:
+                    print(f"Failed to save image {self.image_count}: {e}")
+                finally:
+                    self.image_queue.task_done()
     def capture_image_dynamic(self):
         self.cam.StartGrabbing()
 
@@ -199,10 +217,6 @@ class LineScanCamera:
 
         # Capture loop
         while not self.stop_capture:
-            if self.current_row >= self.MAX_FRAME_HEIGHT:
-                print("Reached maximum capture height.")
-                break
-
             with self.cam.RetrieveResult(20000) as result:
                 if result.GrabSucceeded():
                     # Use GetArray() to safely retrieve the scanline data
@@ -240,10 +254,6 @@ class LineScanCamera:
         images_processed = 0  # Counter for processed images
         # Capture loop
         while not self.stop_capture:
-            if self.current_row >= self.MAX_FRAME_HEIGHT:
-                print("Reached maximum capture height.")
-                break
-
             with self.cam.RetrieveResult(20000) as result:
                 if result.GrabSucceeded():
                     # Use GetArray() to safely retrieve the scanline data
@@ -313,7 +323,7 @@ class LineScanCamera:
 
 def main():
     # Create instance of the LineScanCamera class
-    camera = LineScanCamera(frame_height=2048, exposure=50, trigger='encoder', compression='png')
+    camera = LineScanCamera(frame_height=2048, exposure=10, trigger='encoder', compression='png')
 
     #Set length mode:
     #camera.image_length_mode()
@@ -322,7 +332,7 @@ def main():
     #camera.capture_image(True)
     #camera.capture_image_dynamic()
     #camera.capture_image_dynamic_auto(True)
-    camera.capture_image_machine_learning(False)
+    camera.capture_image_machine_learning(True)
     #camera.capture_and_process_images()
     #camera.show_image()  # Optional: Display the image
     #camera.save_image()

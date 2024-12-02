@@ -224,6 +224,7 @@ def combine_tiles_into_image_with_blending(original_image_path, masks_dir='./out
             original_image = original_image.convert("L")
             orig_width, orig_height = original_image.size
 
+        
         # List and sort mask files
         supported_formats = ('.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp')
         mask_files = sorted([
@@ -323,7 +324,34 @@ def combine_tiles_into_image_with_blending(original_image_path, masks_dir='./out
     except Exception as e:
         print(f"Error while combining tiles with blending: {e}")
         raise
+    try:
+        with Image.open(original_image_path) as original_image:
+            original_image = original_image.convert("L")
+            # Resize original image to match mask if necessary
+            if original_image.size != final_mask_image.size:
+                original_image = original_image.resize(final_mask_image.size, Image.LANCZOS)
+            original_array = np.array(original_image)
+            mask_array = final_mask  # Already a NumPy array
 
+            # Combine original image and mask side by side
+            combined_side_by_side = np.hstack((original_array, mask_array))
+
+            # Convert to PIL Image
+            combined_image = Image.fromarray(combined_side_by_side)
+
+            # Define the path for the combined image
+            combined_image_path = os.path.join(
+                os.path.dirname(output_image_path),
+                f"combined_{os.path.basename(original_image_path)}"
+            )
+
+            # Save the combined image
+            combined_image.save(combined_image_path)
+            print(f"Combined original image and mask saved to {combined_image_path}")
+
+    except Exception as e:
+        print(f"Error while combining original image and mask: {e}")
+        raise
 # ------------------------------
 # Main Processing Function
 # ------------------------------

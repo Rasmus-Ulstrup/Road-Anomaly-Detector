@@ -33,9 +33,9 @@ datasets:
 
 # Define the list of models to be used
 models:
-  - HED
-  - FPN
-  - UNET
+  - hed
+  - fpn
+  - unet
 
 # Define the list of loss functions, including parameters where necessary
 loss_functions:
