@@ -68,8 +68,10 @@ def main():
     tiles_parser.add_argument('--image_size', type=parse_tuple, default=(512, 512), help='Image size (height, width)')
     tiles_parser.add_argument('--output_dir', type=str, default='./output/tiles', help='Path to output place')
     tiles_parser.add_argument('--folder_path', type=str, required=True, help='Path to the folder containing images for inference')
-    tiles_parser.add_argument('--overlap', type=str, default=50, help='the overlap between images')
+    tiles_parser.add_argument('--save_tiles', type=bool, default=False, help='Want to save tiles')
+    tiles_parser.add_argument('--overlap', type=str, default=0, help='the overlap between images')
     tiles_parser.add_argument('--max_workers', type=str, default=4, help='How many threads to run this')
+
     #Overlap
 
     args = parser.parse_args()
@@ -132,7 +134,8 @@ def main():
             device=config.device, 
             tile_size=config.image_size[1],
             overlap=args.overlap,
-            max_workers=args.max_workers
+            max_workers=args.max_workers,
+            save_tiles=args.save_tiles
         )
 
 
