@@ -25,7 +25,7 @@ int16_t encoderAll = 0;
 
 unsigned long lastTriggerTime_light = 0;
 unsigned long lastTriggerTime_camera = 0;
-const unsigned long pulseDurationMicros = 75;  // 10 microseconds for the pulse
+const unsigned long pulseDurationMicros = 120;  // 10 microseconds for the pulse
 
 void setup() {
   DDRB |= (1<<PB0) | (1<<PB1);
