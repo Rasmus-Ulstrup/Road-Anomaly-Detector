@@ -9,29 +9,31 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 # ------------------------------
 # Import Configuration
 # ------------------------------
-from config.config import Config  # Ensure this path is correct based on your project structure
+from config.config import Config 
 
 # ------------------------------
 # Splitting Function
 # ------------------------------
 
-def split_image_into_tiles(image_path, tile_size=512, overlap=50, output_dir='./output/tiles/images'):
+def split_image_into_tiles(image_path, tile_size=512, overlap=50, save_tiles=False, output_dir='./output/tiles/images'):
     """
-    Splits a large image into smaller tiles with optional overlaps.
+    Splits a large image into smaller tiles with optional overlaps and optional saving to disk.
 
     Args:
         image_path (str): Path to the input image.
         tile_size (int): Size of each tile (default is 512).
         overlap (int): Number of pixels to overlap between tiles (default is 50).
-        output_dir (str): Directory to save the split tiles.
+        save_tiles (bool): Whether to save the tiles to disk (default is False).
+        output_dir (str): Directory to save the split tiles if saving is enabled.
 
     Returns:
-        list: List of file paths to the saved tiles.
+        list of dict: Each dict contains 'tile' (PIL Image) and 'position' (tuple).
+                      If save_tiles is True, includes 'tile_path'.
     """
     if not os.path.isfile(image_path):
         raise FileNotFoundError(f"Input image not found at {image_path}")
 
-    os.makedirs(output_dir, exist_ok=True)
+    tiles = []
 
     try:
         with Image.open(image_path) as img:
@@ -42,13 +44,10 @@ def split_image_into_tiles(image_path, tile_size=512, overlap=50, output_dir='./
             if width < tile_size or height < tile_size:
                 raise ValueError(f"Image size should be at least {tile_size}x{tile_size} pixels.")
 
-            tiles = []
             # Calculate number of tiles horizontally and vertically
             stride = tile_size - overlap
             num_tiles_x = (width - overlap) // stride
             num_tiles_y = (height - overlap) // stride
-
-            base_name = os.path.splitext(os.path.basename(image_path))[0]
 
             for i in range(num_tiles_y):
                 for j in range(num_tiles_x):
@@ -66,10 +65,23 @@ def split_image_into_tiles(image_path, tile_size=512, overlap=50, output_dir='./
                         upper = max(height - tile_size, 0)
 
                     tile = img.crop((left, upper, right, lower))
-                    tile_path = os.path.join(output_dir, f"{base_name}_tile_{i}_{j}.png")
-                    tile.save(tile_path)
-                    tiles.append(tile_path)
-                    #print(f"Saved tile ({i}, {j}) to {tile_path}")
+
+                    # Optionally save the tile to disk
+                    if save_tiles:
+                        os.makedirs(output_dir, exist_ok=True)
+                        base_name = os.path.splitext(os.path.basename(image_path))[0]
+                        tile_path = os.path.join(output_dir, f"{base_name}_tile_{i}_{j}.png")
+                        tile.save(tile_path)
+                        tiles.append({
+                            'tile': tile,
+                            'position': (left, upper, right, lower),
+                            'tile_path': tile_path  # Include path if saved
+                        })
+                    else:
+                        tiles.append({
+                            'tile': tile,
+                            'position': (left, upper, right, lower)
+                        })
 
             return tiles
 
@@ -97,34 +109,27 @@ def default_transform(Config):
     ])
     return transform
 
-def run_inference_save_mask(Config, model, image_path, device, output_dir="./output/tiles/masks"):
+def run_inference(Config, model, tile, device):
     """
-    Run inference on a single image tile and save the predicted mask.
+    Run inference on a single image tile and return the predicted mask.
 
     Args:
         Config: Configuration object.
         model (torch.nn.Module): The trained model.
-        image_path (str): Path to the input image tile.
+        tile (PIL.Image): The image tile.
         device (torch.device): Device to run the inference on (CPU/GPU).
-        output_dir (str): Directory to save the predicted mask.
 
     Returns:
-        str: Path to the saved mask image.
+        numpy array: The mask array.
     """
-    if not os.path.isfile(image_path):
-        raise FileNotFoundError(f"Tile image not found at {image_path}")
-
-    os.makedirs(output_dir, exist_ok=True)
-
-    transform = default_transform(Config)  # Use the default transform here
-
     try:
         model.eval()
         with torch.no_grad():
-            # Load and transform the image
-            with Image.open(image_path) as image:
-                image = image.convert("L")  # Ensure grayscale
-                input_tensor = transform(image).unsqueeze(0).to(device)
+            # Define the transform
+            transform = default_transform(Config)
+
+            # Apply transformations
+            input_tensor = transform(tile).unsqueeze(0).to(device)
 
             # Perform inference
             output = model(input_tensor)
@@ -134,180 +139,131 @@ def run_inference_save_mask(Config, model, image_path, device, output_dir="./out
 
             # Scale mask to 0-255
             mask_array = output_mask * 255
-            mask_image = Image.fromarray(mask_array)
 
-            # Save the mask with tile indices
-            base_name = os.path.splitext(os.path.basename(image_path))[0]
-            mask_path = os.path.join(output_dir, f"{base_name}_mask.png")
-            mask_image.save(mask_path)
-            #print(f"Mask saved to {mask_path}")
-
-            return mask_path
+            return mask_array
 
     except Exception as e:
-        print(f"Error during inference on {image_path}: {e}")
+        print(f"Error during inference on a tile: {e}")
         raise
 
-def run_inference_on_tiles(Config, model, device, tiles_dir='./output/tiles/images', masks_output_dir="./output/tiles/masks", max_workers=4):
+def run_inference_on_tiles(Config, model, device, tiles, save_masks=False, masks_output_dir="./output/tiles/masks", max_workers=4):
     """
-    Runs inference on all tiles in the specified directory.
+    Runs inference on all tiles provided with optional saving of mask tiles.
 
     Args:
         Config: Configuration object.
         model (torch.nn.Module): The trained model.
         device (torch.device): Device to run the inference on (CPU/GPU).
-        tiles_dir (str): Directory containing the tile images.
-        masks_output_dir (str): Directory to save the predicted masks.
+        tiles (list of dict): List containing 'tile' and 'position' (and optionally 'tile_path').
+        save_masks (bool): Whether to save the mask tiles to disk (default is False).
+        masks_output_dir (str): Directory to save the mask tiles if saving is enabled.
         max_workers (int): Maximum number of parallel workers (default is 4).
 
     Returns:
-        list: List of file paths to the saved mask images.
+        list of dict: Each dict contains 'mask' and 'position' (and optionally 'mask_path').
     """
-    if not os.path.isdir(tiles_dir):
-        raise FileNotFoundError(f"Tiles directory not found at {tiles_dir}")
+    mask_results = []
 
-    # Supported image formats
-    supported_formats = ('.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp')
+    def process_tile(tile_info):
+        tile = tile_info['tile']
+        position = tile_info['position']
+        mask = run_inference(Config, model, tile, device)
 
-    # List and sort tile files
-    tile_files = sorted([
-        f for f in os.listdir(tiles_dir) 
-        if f.lower().endswith(supported_formats)
-    ])
-
-    if not tile_files:
-        raise ValueError(f"No tile images found in {tiles_dir} with formats {supported_formats}")
-
-    os.makedirs(masks_output_dir, exist_ok=True)
-
-    mask_paths = []
-
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_tile = {
-            executor.submit(run_inference_save_mask, Config, model, os.path.join(tiles_dir, tile_file), device, masks_output_dir): tile_file
-            for tile_file in tile_files
+        mask_info = {
+            'mask': mask,
+            'position': position
         }
 
-        for future in as_completed(future_to_tile):
-            tile_file = future_to_tile[future]
-            try:
-                mask_path = future.result()
-                mask_paths.append(mask_path)
-            except Exception as e:
-                print(f"Failed to process tile {tile_file}: {e}")
+        # Optionally save the mask to disk
+        if save_masks:
+            os.makedirs(masks_output_dir, exist_ok=True)
+            if 'tile_path' in tile_info:
+                base_name = os.path.splitext(os.path.basename(tile_info['tile_path']))[0]
+            else:
+                # Generate a unique identifier if tile_path is not available
+                base_name = f"tile_{position[0]}_{position[1]}"
+            mask_path = os.path.join(masks_output_dir, f"{base_name}_mask.png")
+            mask_image = Image.fromarray(mask)
+            mask_image.save(mask_path)
+            mask_info['mask_path'] = mask_path
 
-    return mask_paths
+        return mask_info
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(process_tile, tile_info) for tile_info in tiles]
+        for future in as_completed(futures):
+            try:
+                mask = future.result()
+                mask_results.append(mask)
+            except Exception as e:
+                print(f"Failed to process a tile: {e}")
+
+    return mask_results
 
 # ------------------------------
 # Combining Function with Blending
 # ------------------------------
 
-def combine_tiles_into_image_with_blending(original_image_path, masks_dir='./output/tiles/masks', output_image_path='./output/tiles/combined_mask.png', tile_size=512, overlap=50):
+def combine_tiles_into_image_with_blending(original_image_path, masks, output_image_path='./output/tiles/combined_mask.png', tile_size=512, overlap=50):
     """
     Combines mask tiles into a single large mask image with blending in overlapping regions.
 
     Args:
-        masks_dir (str): Directory containing the mask tiles.
-        output_image_path (str): Path to save the combined mask image.
         original_image_path (str): Path to the original large image to determine size.
+        masks (list of dict): Each dict contains 'mask' (numpy array) and 'position' (tuple).
+        output_image_path (str): Path to save the combined mask image.
         tile_size (int): Size of each tile (default is 512).
         overlap (int): Number of overlapping pixels between tiles (default is 50).
     """
     if not os.path.isfile(original_image_path):
         raise FileNotFoundError(f"Original image not found at {original_image_path}")
 
-    if not os.path.isdir(masks_dir):
-        raise FileNotFoundError(f"Masks directory not found at {masks_dir}")
-
     try:
         with Image.open(original_image_path) as original_image:
             original_image = original_image.convert("L")
             orig_width, orig_height = original_image.size
 
-        
-        # List and sort mask files
-        supported_formats = ('.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp')
-        mask_files = sorted([
-            f for f in os.listdir(masks_dir)
-            if f.lower().endswith(supported_formats) and '_mask' in f
-        ])
-
-        # Calculate expected number of tiles
+        # Calculate stride
         stride = tile_size - overlap
-        num_tiles_x = (orig_width - overlap) // stride
-        num_tiles_y = (orig_height - overlap) // stride
-        expected_num_tiles = num_tiles_x * num_tiles_y
-
-        if len(mask_files) != expected_num_tiles:
-            raise ValueError(f"Expected {expected_num_tiles} mask tiles, but found {len(mask_files)}.")
 
         # Initialize arrays for the combined mask and weight map
         combined_mask = np.zeros((orig_height, orig_width), dtype=np.float32)
         weight_map = np.zeros((orig_height, orig_width), dtype=np.float32)
 
-        for mask_file in mask_files:
-            try:
-                # Extract tile indices from filename
-                # Expected format: {base_name}_tile_{i}_{j}_mask.png
-                parts = mask_file.replace('.png', '').replace('.jpg', '').replace('.jpeg', '').split('_')
-                if len(parts) < 5:
-                    raise ValueError(f"Mask filename {mask_file} does not conform to the expected format.")
-                i = int(parts[-3])  # Assuming format: base_name_tile_i_j_mask.png
-                j = int(parts[-2])
+        for mask_info in masks:
+            mask_array = mask_info['mask']
+            left, upper, right, lower = mask_info['position']
 
-                left = j * stride
-                upper = i * stride
-                right = left + tile_size
-                lower = upper + tile_size
+            # Ensure the mask fits within the original image dimensions
+            right = min(right, orig_width)
+            lower = min(lower, orig_height)
+            left = max(right - tile_size, 0)
+            upper = max(lower - tile_size, 0)
 
-                # Handle edge cases
-                right = min(right, orig_width)
-                lower = min(lower, orig_height)
-                left = max(right - tile_size, 0)
-                upper = max(lower - tile_size, 0)
+            # Define blending weights
+            weight = np.ones_like(mask_array, dtype=np.float32)
 
-                mask_path = os.path.join(masks_dir, mask_file)
-                with Image.open(mask_path) as mask:
-                    mask = mask.convert("L")
-                    mask_array = np.array(mask, dtype=np.float32) / 255.0  # Normalize to [0,1]
+            # Calculate overlap regions for blending
+            # Horizontal blending
+            if left > 0 and overlap > 0:
+                weight[:, :overlap] *= np.linspace(0, 1, overlap)[None, :]
+            if right < orig_width and overlap > 0:
+                weight[:, -overlap:] *= np.linspace(1, 0, overlap)[None, :]
 
-                # Define blending weights
-                weight = np.ones((mask_array.shape[0], mask_array.shape[1]), dtype=np.float32)
+            # Vertical blending
+            if upper > 0 and overlap > 0:
+                weight[:overlap, :] *= np.linspace(0, 1, overlap)[:, None]
+            if lower < orig_height and overlap > 0:
+                weight[-overlap:, :] *= np.linspace(1, 0, overlap)[:, None]
 
-                # Left overlap
-                if left > 0 and overlap > 0:
-                    overlap_region = slice(0, overlap)
-                    weight[:, overlap_region] *= np.linspace(0, 1, overlap)[None, :]
-
-                # Right overlap
-                if right < orig_width and overlap > 0:
-                    overlap_region = slice(-overlap, None)
-                    weight[:, overlap_region] *= np.linspace(1, 0, overlap)[None, :]
-
-                # Top overlap
-                if upper > 0 and overlap > 0:
-                    overlap_region = slice(0, overlap)
-                    weight[overlap_region, :] *= np.linspace(0, 1, overlap)[:, None]
-
-                # Bottom overlap
-                if lower < orig_height and overlap > 0:
-                    overlap_region = slice(-overlap, None)
-                    weight[overlap_region, :] *= np.linspace(1, 0, overlap)[:, None]
-
-                # Add to combined mask and weight map
-                combined_mask[upper:lower, left:right] += mask_array * weight
-                weight_map[upper:lower, left:right] += weight
-
-                #print(f"Blended {mask_file} at position ({left}, {upper})")
-
-            except Exception as e:
-                print(f"Error processing mask {mask_file}: {e}")
-                raise
+            # Add to combined mask and weight map
+            combined_mask[upper:lower, left:right] += mask_array * weight
+            weight_map[upper:lower, left:right] += weight
 
         # Avoid division by zero
         weight_map[weight_map == 0] = 1.0
         final_mask = combined_mask / weight_map
-        final_mask = (final_mask * 255).astype(np.uint8)
+        final_mask = np.clip(final_mask, 0, 255).astype(np.uint8)
 
         # Convert to PIL Image and save
         final_mask_image = Image.fromarray(final_mask)
@@ -321,54 +277,59 @@ def combine_tiles_into_image_with_blending(original_image_path, masks_dir='./out
         else:
             print("Combined mask size matches the original image.")
 
+        # Optional: Combine original image and mask side by side
+        try:
+            with Image.open(original_image_path) as original_image:
+                original_image = original_image.convert("L")
+                # Resize original image to match mask if necessary
+                if original_image.size != final_mask_image.size:
+                    original_image = original_image.resize(final_mask_image.size, Image.LANCZOS)
+                original_array = np.array(original_image)
+                mask_array = final_mask  # Already a NumPy array
+
+                # Combine original image and mask side by side
+                combined_side_by_side = np.hstack((original_array, mask_array))
+
+                # Convert to PIL Image
+                combined_image = Image.fromarray(combined_side_by_side)
+
+                # Define the path for the combined image
+                combined_image_path = os.path.join(
+                    os.path.dirname(output_image_path),
+                    f"combined_{os.path.basename(original_image_path)}"
+                )
+
+                # Save the combined image
+                combined_image.save(combined_image_path)
+                print(f"Combined original image and mask saved to {combined_image_path}")
+
+        except Exception as e:
+            print(f"Error while combining original image and mask: {e}")
+            raise
+
     except Exception as e:
         print(f"Error while combining tiles with blending: {e}")
         raise
-    try:
-        with Image.open(original_image_path) as original_image:
-            original_image = original_image.convert("L")
-            # Resize original image to match mask if necessary
-            if original_image.size != final_mask_image.size:
-                original_image = original_image.resize(final_mask_image.size, Image.LANCZOS)
-            original_array = np.array(original_image)
-            mask_array = final_mask  # Already a NumPy array
 
-            # Combine original image and mask side by side
-            combined_side_by_side = np.hstack((original_array, mask_array))
-
-            # Convert to PIL Image
-            combined_image = Image.fromarray(combined_side_by_side)
-
-            # Define the path for the combined image
-            combined_image_path = os.path.join(
-                os.path.dirname(output_image_path),
-                f"combined_{os.path.basename(original_image_path)}"
-            )
-
-            # Save the combined image
-            combined_image.save(combined_image_path)
-            print(f"Combined original image and mask saved to {combined_image_path}")
-
-    except Exception as e:
-        print(f"Error while combining original image and mask: {e}")
-        raise
 # ------------------------------
 # Main Processing Function
 # ------------------------------
 
-def run_main_tiles(Config, image_dir, output_dir, model, device, tile_size=512, overlap=50, max_workers=4):
+def run_main_tiles(Config, image_dir, output_dir, model, device, tile_size=512, overlap=50, max_workers=4, save_tiles=False, save_masks=False):
     """
     Processes all images in the specified directory: splits into tiles, runs inference, and combines masks.
 
     Args:
         Config: Configuration object.
         image_dir (str): Directory containing input images.
-        output_dir (str): Directory for base outputs
+        output_dir (str): Directory for base outputs.
         model (torch.nn.Module): The trained model.
         device (torch.device): Device to run the inference on (CPU/GPU).
         tile_size (int): Size of each tile (default: 512).
         overlap (int): Overlap between tiles in pixels (default: 50).
         max_workers (int): Maximum number of parallel workers for inference (default: 4).
+        save_tiles (bool): Whether to save image tiles to disk (default: False).
+        save_masks (bool): Whether to save mask tiles to disk (default: False).
     """
     # Supported image formats
     supported_formats = ('.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp')
@@ -390,35 +351,45 @@ def run_main_tiles(Config, image_dir, output_dir, model, device, tile_size=512, 
         base_name = os.path.splitext(image_file)[0]
         print(f"\nProcessing image: {image_path}")
 
-        # Define output directories for this image
-        image_output_dir = os.path.join(output_dir, base_name, 'tiles', 'images')
-        masks_output_dir = os.path.join(output_dir, base_name, 'tiles', 'masks')
+        # Define output paths for this image
         combined_mask_dir = os.path.join(output_dir, base_name, 'combined_masks')
         combined_mask_path = os.path.join(combined_mask_dir, f"{base_name}_combined_mask.png")
 
+        # Define tiles output directories if saving is enabled
+        image_output_dir = os.path.join(output_dir, base_name, 'tiles', 'images') if save_tiles else None
+        masks_output_dir = os.path.join(output_dir, base_name, 'tiles', 'masks') if save_masks else None
+
         try:
-            # Step 1: Split image into tiles
-            split_image_into_tiles(
+            # Step 1: Split image into tiles (in-memory with optional saving)
+            tiles = split_image_into_tiles(
                 image_path=image_path,
                 tile_size=tile_size,
                 overlap=overlap,
-                output_dir=image_output_dir
+                save_tiles=save_tiles,
+                output_dir=image_output_dir if save_tiles else './output/tiles/images'
             )
+            print(f"Split into {len(tiles)} tiles.")
 
-            # Step 2: Run inference on tiles
-            run_inference_on_tiles(
+            # Step 2: Run inference on tiles (in-memory with optional saving)
+            masks = run_inference_on_tiles(
                 Config=Config,
                 model=model,
                 device=device,
-                tiles_dir=image_output_dir,
-                masks_output_dir=masks_output_dir,
+                tiles=tiles,
+                save_masks=save_masks,
+                masks_output_dir=masks_output_dir if save_masks else "./output/tiles/masks",
                 max_workers=max_workers
             )
+            print(f"Generated {len(masks)} masks.")
 
-            # Step 3: Combine masks with blending
+            if len(masks) == 0:
+                print("No masks were generated. Skipping combination step.")
+                continue
+
+            # Step 3: Combine masks with blending (in-memory)
             combine_tiles_into_image_with_blending(
                 original_image_path=image_path,
-                masks_dir=masks_output_dir,
+                masks=masks,
                 output_image_path=combined_mask_path,
                 tile_size=tile_size,
                 overlap=overlap
@@ -436,4 +407,41 @@ def run_main_tiles(Config, image_dir, output_dir, model, device, tile_size=512, 
 # ------------------------------
 
 if __name__ == '__main__':
-    print("main")
+    print("Starting in-memory tile processing pipeline...")
+
+    # Example usage:
+    # Assume Config is properly defined in config.config
+    # model is loaded and moved to the appropriate device
+    # image_dir and output_dir are specified
+
+    # Example placeholders (replace with actual implementations)
+    config = Config()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+    # Load your trained model here
+    # Example:
+    # from your_model_module import YourModelClass
+    # model = YourModelClass()
+    # model.load_state_dict(torch.load('path_to_model.pth'))
+    # model.to(device)
+
+    # Ensure that 'model' is defined. Replace with actual model loading code.
+    try:
+        model
+    except NameError:
+        raise NameError("Model is not defined. Please load your trained model before running the pipeline.")
+
+    image_directory = '/path/to/input/images'  # Replace with your input image directory
+    output_directory = '/path/to/output'       # Replace with your desired output directory
+
+    # Run the main processing function
+    run_main_tiles(
+        Config=config,
+        image_dir=image_directory,
+        output_dir=output_directory,
+        model=model,
+        device=device,
+        tile_size=512,
+        overlap=50,
+        max_workers=4
+    )

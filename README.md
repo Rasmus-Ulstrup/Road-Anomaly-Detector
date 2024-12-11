@@ -7,7 +7,7 @@
 **Road Anomaly Detector** is a machine learning project aimed at identifying and detecting anomalies on roads using image processing techniques. This project is designed to assist in the automation of road maintenance by providing a reliable tool for identifying potholes, cracks, and other surface irregularities.
 
 ## Features
-
+- test
 ## Installation
 
 1. **Clone the repository**:

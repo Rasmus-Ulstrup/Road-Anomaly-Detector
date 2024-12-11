@@ -10,10 +10,10 @@ dependencies:
   - pip
 
   # PyTorch latest stable GPU version with CUDA 12.4
-  - pytorch
-  - torchvision
-  - torchaudio
-  - pytorch-cuda=12.4
+  #- pytorch
+  #- torchvision
+  #- torchaudio
+  #- pytorch-cuda=12.4
 
   # Additional dependencies
   - numpy
@@ -29,6 +29,10 @@ dependencies:
 
   - pip:
     - black
+    - torch
+    - torchvision
+    - torchaudio
+    - numba
     - pypylon
     - flake8
     - isort
