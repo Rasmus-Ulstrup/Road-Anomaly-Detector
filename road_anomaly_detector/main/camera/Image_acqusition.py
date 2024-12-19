@@ -147,23 +147,23 @@ class LineScanCamera:
                 if result.GrabSucceeded():
                     # Use GetArray() to safely retrieve the scanline data
                     out_array = result.GetArray()
-                    if (correction):
-                        if self.current_row % 2:
-                            curret_array =  out_array - old_array
-                            current_image_lines.append(curret_array)
-                        else:
-                            old_array = out_array
-                    if (correction==False):
-                        if self.current_row % 2:
-                            current_image_lines.append(out_array)
-                    
+                    # if (correction):
+                    #     if self.current_row % 2:
+                    #         curret_array =  out_array - old_array
+                    #         current_image_lines.append(curret_array)
+                    #     else:
+                    #         old_array = out_array
+                    # if (correction==False):
+                    #     if self.current_row % 2:
+                    #         current_image_lines.append(out_array)
+                    current_image_lines.append(out_array)
                     # Check if we have enough lines to form a complete image
-                    if self.current_row == self.VIRTUAL_FRAME_HEIGHT*2:
+                    if self.current_row == self.VIRTUAL_FRAME_HEIGHT:
                         # Stack the lines to form an image
                         captured_image = np.vstack(current_image_lines)
 
                         # Save the image
-                        output_path = os.path.join(self.output_folder, f"AAA{self.image_count:05d}.{self.compression}")
+                        output_path = os.path.join(self.output_folder, f"vej_2_25_{self.image_count:05d}.{self.compression}")
                         self.image_count+=1
                         # Enqueue the image for saving
                         self.image_queue.put((captured_image, output_path, self.image_count))
@@ -323,7 +323,7 @@ class LineScanCamera:
 
 def main():
     # Create instance of the LineScanCamera class
-    camera = LineScanCamera(frame_height=2048, exposure=10, trigger='encoder', compression='png')
+    camera = LineScanCamera(frame_height=2048, exposure=25, trigger='encoder', compression='png')
 
     #Set length mode:
     #camera.image_length_mode()
