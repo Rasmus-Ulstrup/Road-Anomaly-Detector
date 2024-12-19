@@ -4,3 +4,6 @@ road_anomaly_detector/main/model/model_files
 road_anomaly_detector/main/model/output/tiles
 road_anomaly_detector/main/model/logs
 road_anomaly_detector/main/model/metrics/__pycache__/
+road_anomaly_detector/main/miscellaneous/stiched_folder/
+road_anomaly_detector/main/miscellaneous/tiles_folder/
+road_anomaly_detector/main/miscellaneous/PCSM

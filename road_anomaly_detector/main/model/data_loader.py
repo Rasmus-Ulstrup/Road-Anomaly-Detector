@@ -132,6 +132,10 @@ def get_data_loaders(Config):
             "image_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Mixed/images"),
             "mask_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Mixed/masks")
         },
+        "mixed_2": {
+            "image_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Mixed_2/images"),
+            "mask_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Mixed_2/masks")
+        },
         "GAPS10m": {
             "image_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/GAPS10m/Images"),
             "mask_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/GAPS10m/Masks")

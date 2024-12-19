@@ -32,8 +32,8 @@ def main():
     train_parser.add_argument('--test_size', type=float, default=0.2, help='Validation/test split size')
     train_parser.add_argument('--loss_function', type=str, default='dice', help="Loss function")
     train_parser.add_argument('--learning_rate', type=float, default=1e-3, help='Learning rate')
-    train_parser.add_argument('--epochs', type=int, default=50, help='Number of epochs')
-    train_parser.add_argument('--patience', type=int, default=10, help='Patience for early stopping')
+    train_parser.add_argument('--epochs', type=int, default=500, help='Number of epochs')
+    train_parser.add_argument('--patience', type=int, default=20, help='Patience for early stopping')
     train_parser.add_argument('--argumentation', type=int, default=True, help='Argumentation 1 or 0')
     train_parser.add_argument('--alpha', type=float, default={}, help='Additional loss parameters')
     train_parser.add_argument('--gamma', type=float, default={}, help='Additional loss parameters GAMMA OR BETA')
@@ -69,7 +69,7 @@ def main():
     tiles_parser.add_argument('--output_dir', type=str, default='./output/tiles', help='Path to output place')
     tiles_parser.add_argument('--folder_path', type=str, required=True, help='Path to the folder containing images for inference')
     tiles_parser.add_argument('--save_tiles', type=bool, default=False, help='Want to save tiles')
-    tiles_parser.add_argument('--overlap', type=str, default=0, help='the overlap between images')
+    tiles_parser.add_argument('--overlap', type=int, default=0, help='the overlap between images')
     tiles_parser.add_argument('--max_workers', type=str, default=4, help='How many threads to run this')
 
     #Overlap

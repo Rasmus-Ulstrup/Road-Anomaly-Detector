@@ -9,25 +9,28 @@ global:
 
 # Define all datasets with their specific hyperparameters
 datasets:
-  cracktree200:
-    learning_rate: 0.001
-    batch_size: 4
-    # epochs: 30       # Uncomment to override global epochs for this dataset
-    # patience: 5      # Uncomment to override global patience for this dataset
-  forest:
-    learning_rate: 0.001
-    batch_size: 4
-  gaps384:
-    learning_rate: 0.0001
-    batch_size: 4
-    # patience: 15  # Override global patience for this dataset
-  cfd:
-    learning_rate: 0.001
-    batch_size: 1
-  mixed:
-    learning_rate: 0.001 # !Train with other hyperparamters!
-    batch_size: 4
-  GAPS10m:
+  # cracktree200:
+  #   learning_rate: 0.001
+  #   batch_size: 4
+  #   # epochs: 30       # Uncomment to override global epochs for this dataset
+  #   # patience: 5      # Uncomment to override global patience for this dataset
+  # forest:
+  #   learning_rate: 0.001
+  #   batch_size: 4
+  # gaps384:
+  #   learning_rate: 0.0001
+  #   batch_size: 4
+  #   # patience: 15  # Override global patience for this dataset
+  # cfd:
+  #   learning_rate: 0.001
+  #   batch_size: 1
+  # mixed:
+  #   learning_rate: 0.001 # !Train with other hyperparamters!
+  #   batch_size: 4
+  # GAPS10m:
+  #   learning_rate: 0.001
+  #   batch_size: 4
+  mixed_2:
     learning_rate: 0.001
     batch_size: 4
 
