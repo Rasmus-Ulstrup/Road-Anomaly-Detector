@@ -5,7 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torchvision import transforms
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from metrics.metrics import default_transform, apply_preprocessing
+from metrics.metrics import default_transform, apply_preprocessing, compute_metrics
+from sklearn.metrics import f1_score
 # Albumentations imports
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
@@ -406,9 +407,29 @@ def run_main_tiles(Config, image_dir, output_dir, model, device, tile_size=512, 
             # Optionally, you can continue with the next image or halt execution
             continue
 
-def run_main_tiles_metrics(Config, image_dir, mask_dir, output_dir, model, device, tile_size=512, overlap=50, max_workers=4, save_tiles=False, save_masks=False, preprocessing=False):
+def sort_key(d):
+    return (d['position'][1], d['position'][0])
+
+def validate_sorted_lists(sorted_list1, sorted_list2):
+    if len(sorted_list1) != len(sorted_list2):
+        raise ValueError("The two lists have different lengths.")
+    
+    for idx, (dict1, dict2) in enumerate(zip(sorted_list1, sorted_list2)):
+        if dict1['position'] != dict2['position']:
+            raise ValueError(
+                f"Position mismatch at index {idx}:\n"
+                f"Dict1 Position: {dict1['position']}\n"
+                f"Dict2 Position: {dict2['position']}"
+            )
+    
+    print("Validation Passed: Both lists are sorted and positions match correctly.")
+
+def run_main_tiles_metrics(Config, folder_dir, output_dir, model, device, tile_size=512, overlap=50, max_workers=4, save_tiles=False, save_masks=False, preprocessing=False):
     # Supported image formats
     supported_formats = ('.png', '.jpg', '.jpeg', '.tif', '.tiff', '.bmp')
+
+    image_dir = os.path.join(folder_dir, "images")
+    mask_dir = os.path.join(folder_dir, "mask")
 
     # List and sort image files in the input directory
     image_files = sorted([
@@ -419,11 +440,34 @@ def run_main_tiles_metrics(Config, image_dir, mask_dir, output_dir, model, devic
     if not image_files:
         print(f"No images found in {image_dir} with formats {supported_formats}.")
         return
+    
+    mask_files = sorted([
+        f for f in os.listdir(mask_dir)
+        if f.lower().endswith(supported_formats)
+    ])
 
-    print(f"Found {len(image_files)} images to process.")
+    if not image_files:
+        print(f"No images found in {mask_dir} with formats {supported_formats}.")
+        return
 
-    for image_file in image_files:
+    print(f"Found {len(image_files)} images and {len(mask_files)} mask to process.")
+
+    if len(image_files) != len(mask_files):
+        print("Mask and images are not the same length...")
+        return
+    
+    image_metrics = {
+        "correctness": [],
+        "completeness": [],
+        "quality": [],
+        "f1": []
+        # "hd95": []
+    }
+
+    for image_file, mask_file in zip(image_files, mask_files):
         image_path = os.path.join(image_dir, image_file)
+        mask_path = os.path.join(mask_dir, mask_file)
+
         base_name = os.path.splitext(image_file)[0]
         print(f"\nProcessing image: {image_path}")
 
@@ -434,6 +478,12 @@ def run_main_tiles_metrics(Config, image_dir, mask_dir, output_dir, model, devic
         # Define tiles output directories if saving is enabled
         image_output_dir = os.path.join(output_dir, base_name, 'tiles', 'images') if save_tiles else None
         masks_output_dir = os.path.join(output_dir, base_name, 'tiles', 'masks') if save_masks else None
+
+        #Metrics
+        tile_correctness = []
+        tile_completeness = []
+        tile_quality = []
+        tile_f1 = []
 
         try:
             # Step 1: Split image into tiles (in-memory with optional saving)
@@ -472,17 +522,76 @@ def run_main_tiles_metrics(Config, image_dir, mask_dir, output_dir, model, devic
                 overlap=overlap
             )
 
-            print(f"Finished processing image: {image_path}")
             print(f"Starting metrics calculation for: {image_path}")
 
-            print("Splitting mask into tiles")
+            print(f"Splitting mask into tiles for: {mask_path}")
+            mask_tiles = split_image_into_tiles(
+                image_path=mask_path,
+                tile_size=tile_size,
+                overlap=overlap,
+                save_tiles=False,
+                output_dir=image_output_dir if save_tiles else './output/tiles/images'
+            )
+            print(f"Split mask into {len(mask_tiles)} tiles.")
 
+            # Compute metrics
+            print("Computing metrics")
+            sorted_masks = sorted(masks, key=sort_key)
+            sorted_mask_tiles = sorted(mask_tiles, key=sort_key)
+
+            validate_sorted_lists(sorted_masks, sorted_mask_tiles)
+
+            for pred_dict, gt_binary_dict in zip(sorted_masks, sorted_mask_tiles):
+                # Check postions
+                if pred_dict['position'] != gt_binary_dict['position']:
+                    print("WARNING: position mismatch!")
+
+                #  # Display the image and mask
+                # plt.figure(figsize=(12, 6))
+                # plt.subplot(1, 2, 1)
+                # plt.imshow(pred_dict['mask'], cmap="gray")
+                # plt.title("Transformed Image")
+                # plt.axis("off")
+
+                # plt.subplot(1, 2, 2)
+                # plt.imshow(gt_binary_dict['tile'], cmap="gray")
+                # plt.title("not transformed Image")
+                # plt.axis("off")
+
+                # print("Press any key to close the plot and continue...")
+                # plt.show(block=True)
+
+                pred = pred_dict['mask'] / 255
+                gt_binary = gt_binary_dict['tile'] / 255
+                #print("Prediction unquie = ", np.unique(pred))
+                #print("mask unquie = ", np.unique(gt_binary))
+                correctness, completeness, quality = compute_metrics(pred, gt_binary)
+                tile_correctness.append(correctness)
+                tile_completeness.append(completeness)
+                tile_quality.append(quality)
+                tile_f1.append(f1_score(gt_binary.flatten(), pred.flatten(), zero_division=1))
+
+            # calculate average for image
+            image_metrics["correctness"].append(np.mean(tile_correctness))
+            image_metrics["completeness"].append(np.mean(tile_completeness))
+            image_metrics["quality"].append(np.mean(tile_quality))
+            image_metrics["f1"].append(np.mean(tile_f1))
+
+            print(f"Calculated metrics for image {image_path}")
+             
             
-
         except Exception as e:
             print(f"Error processing image {image_path}: {e}")
             # Optionally, you can continue with the next image or halt execution
             continue
+
+    # Print matrics
+    print("---------------------------------")
+    print("              METRICS            ")
+    print("---------------------------------")
+    for metric, values in image_metrics.items():
+        avg_value = np.mean(values)
+        print(f"{metric.capitalize()}: {avg_value:.4f}")
 
 # ------------------------------
 # Main Execution Block

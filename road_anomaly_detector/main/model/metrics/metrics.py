@@ -15,14 +15,23 @@ from sklearn.metrics import f1_score
 from scipy.spatial import KDTree
 from config.config import Config
 
-###############################################################################
-# Helper Functions
-###############################################################################
+
 def binarize_output(output, threshold=0.5):
     return (output > threshold).astype(np.uint8)
 
-@jit(nopython=True)
 def compute_metrics(predictions, ground_truths):
+    """
+    Computes Precision (Correctness), Recall (Completeness), and IoU (Quality) metrics.
+
+    Parameters:
+    - predictions (np.ndarray): Predicted mask array.
+    - ground_truths (np.ndarray): Ground truth mask array.
+
+    Returns:
+    - correctness (float): Precision score.
+    - completeness (float): Recall score.
+    - quality (float): IoU score.
+    """
     # Ensure both arrays are binary (0 or 1)
     predictions = (predictions > 0.5).astype(np.uint8)
     ground_truths = (ground_truths > 0.5).astype(np.uint8)
@@ -32,9 +41,19 @@ def compute_metrics(predictions, ground_truths):
     FP_d = np.sum(predictions & ~ground_truths)
     FN_d = np.sum(~predictions & ground_truths)
 
-    correctness = TP_d / (TP_d + FP_d) if (TP_d + FP_d) > 0 else 0
-    completeness = TP_d / (TP_d + FN_d) if (TP_d + FN_d) > 0 else 0
-    quality = TP_d / (TP_d + FP_d + FN_d) if (TP_d + FP_d + FN_d) > 0 else 0
+    # Check if there are any positive samples in both y_true and y_pred
+    has_positive_true = np.any(ground_truths == 1)
+    has_positive_pred = np.any(predictions == 1)
+
+    if not has_positive_true and not has_positive_pred:
+        # No positive samples in both y_true and y_pred
+        correctness = 1.0
+        completeness = 1.0
+        quality = 1.0
+    else:
+        correctness = TP_d / (TP_d + FP_d) if (TP_d + FP_d) > 0 else 0
+        completeness = TP_d / (TP_d + FN_d) if (TP_d + FN_d) > 0 else 0
+        quality = TP_d / (TP_d + FP_d + FN_d) if (TP_d + FP_d + FN_d) > 0 else 0
 
     return correctness, completeness, quality
 
@@ -49,9 +68,7 @@ def hausdorff_distance_95(prediction, ground_truth):
     hd95 = np.percentile(all_distances, 95)
     return hd95
 
-###############################################################################
-# Albumentations Transform
-###############################################################################
+
 def default_transform(Config):
     """
     Returns an Albumentations Compose transform.
@@ -64,9 +81,7 @@ def default_transform(Config):
     ])
     return transform
 
-###############################################################################
-# Model Evaluation
-###############################################################################
+
 def evaluate_model(Config, model, test_loader, device):
     model.eval()
     batch_metrics = {
@@ -149,9 +164,7 @@ def evaluate_model(Config, model, test_loader, device):
 
     print(f"\nMetrics saved to {Config.metric_save_path}")
 
-###############################################################################
-# Inference on a Single Image
-###############################################################################
+
 def run_inference(Config, model, image_path, device, output_dir="./outputs", preprocessing=False):
     """
     Run inference on a single image and save the predicted mask using OpenCV + Albumentations.
@@ -205,9 +218,6 @@ def run_inference(Config, model, image_path, device, output_dir="./outputs", pre
         plt.axis("off")
         plt.show()
 
-###############################################################################
-# Inference on a Folder of Images
-###############################################################################
 def run_inference_on_folder(Config, model, folder_path, device, output_dir="./outputs", preprocessing=False):
     """
     Run inference on all images in a folder and save the predicted masks using OpenCV + Albumentations.

@@ -8,7 +8,7 @@ from sklearn.metrics import f1_score
 from torchvision import transforms
 from PIL import Image
 import numpy as np
-from utils.tiles import run_main_tiles
+from utils.tiles import run_main_tiles, run_main_tiles_metrics
 
 
 def main():
@@ -81,11 +81,11 @@ def main():
 
 
     # Tile tester subparser
-    tile_test_parser = subparsers.add_parser("tile_test", help="Splits image into tiles and runs metric")
+    tile_test_parser = subparsers.add_parser("tiles_test", help="Splits image into tiles and runs metric")
     tile_test_parser.add_argument('--model_name', type=str, default='unet', help='Model for inference: unet, unet')
     tile_test_parser.add_argument('--model_path', type=str, default='./model_files/UNet_cfd_lr0001_b4_p20_e500_dice.pth', help='Path to the trained model')
     tile_test_parser.add_argument('--image_size', type=parse_tuple, default=(512, 512), help='Image size (height, width)')
-    tile_test_parser.add_argument('--output_dir', type=str, default='./output/tiles', help='Path to output directory')
+    tile_test_parser.add_argument('--output_dir', type=str, default='./labeled_test/combined', help='Path to output directory')
     tile_test_parser.add_argument('--folder_path', type=str, required=True, help='Path to the folder containing images for inference')
     tile_test_parser.add_argument('--save_tiles', action='store_true', help='Enable saving tiles')
     tile_test_parser.add_argument('--overlap', type=int, default=0, help='Overlap between tiles')
@@ -169,13 +169,13 @@ def main():
             save_tiles=args.save_tiles,
             preprocessing=args.preprocessing  # Pass preprocessing flag if applicable
         )
-    elif args.mode=='tile_test':
+    elif args.mode=='tiles_test':
         config = Config(model_name=args.model_name, image_size=args.image_size, preprocessing=args.preprocessing)
         config.model.load_state_dict(torch.load(args.model_path, map_location=config.device))  # Ensure compatibility
         
-        run_main_tiles(
+        run_main_tiles_metrics(
             Config=config, 
-            image_dir=args.folder_path, 
+            folder_dir=args.folder_path, 
             output_dir=args.output_dir,
             model=config.model, 
             device=config.device, 
