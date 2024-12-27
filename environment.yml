@@ -35,5 +35,6 @@ dependencies:
     - numba
     - pypylon
     - flake8
+    - segmentation-models-pytorch
     - isort
     - -e .

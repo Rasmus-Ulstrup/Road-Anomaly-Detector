@@ -1,21 +1,27 @@
+import os
+import csv
+import time
 import numpy as np
 import torch
-from sklearn.metrics import f1_score
-#from scipy.spatial.distance import directed_hausdorff
-from scipy.spatial import KDTree
+import cv2
 import matplotlib.pyplot as plt
-import os
-from PIL import Image  # Ensure this is imported at the top of the file
-from torchvision import transforms
-from numba import jit
-import time
-from config.config import Config
-import csv
 
+# Albumentations imports
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+
+from numba import jit
+from sklearn.metrics import f1_score
+from scipy.spatial import KDTree
+from config.config import Config
+
+###############################################################################
+# Helper Functions
+###############################################################################
 def binarize_output(output, threshold=0.5):
     return (output > threshold).astype(np.uint8)
 
-@jit(nopython=True)  # Numba will attempt to compile the function to machine code
+@jit(nopython=True)
 def compute_metrics(predictions, ground_truths):
     # Ensure both arrays are binary (0 or 1)
     predictions = (predictions > 0.5).astype(np.uint8)
@@ -32,7 +38,6 @@ def compute_metrics(predictions, ground_truths):
 
     return correctness, completeness, quality
 
-
 def hausdorff_distance_95(prediction, ground_truth):
     prediction = prediction.reshape(-1, 2)
     ground_truth = ground_truth.reshape(-1, 2)
@@ -44,26 +49,72 @@ def hausdorff_distance_95(prediction, ground_truth):
     hd95 = np.percentile(all_distances, 95)
     return hd95
 
-# Test evaluation function
+###############################################################################
+# Albumentations Transform
+###############################################################################
+def default_transform(Config):
+    """
+    Returns an Albumentations Compose transform.
+    Adjust according to your needs (normalization, etc.).
+    """
+    transform = A.Compose([
+        A.Resize(height=Config.image_size[0], width=Config.image_size[1]),
+        # A.Normalize(mean=(mean,), std=(std,)),  # optionally normalize
+        ToTensorV2()
+    ])
+    return transform
+
+###############################################################################
+# Model Evaluation
+###############################################################################
 def evaluate_model(Config, model, test_loader, device):
     model.eval()
-    batch_metrics = {"correctness": [], "completeness": [], "quality": [], "f1": []
-                     #, "hd95": []
-                     }
+    batch_metrics = {
+        "correctness": [],
+        "completeness": [],
+        "quality": [],
+        "f1": []
+        # "hd95": []
+    }
 
     total_batches = len(test_loader)
     with torch.no_grad():
         for i, (images, masks) in enumerate(test_loader):
             images, masks = images.to(device), masks.to(device)
+            # # Display the image and mask
+            # # Assuming batch size > 1, pick the first image and mask in the batch
+            # image = images[0].cpu().numpy().squeeze()  # Convert to numpy and remove extra dimensions
+            # mask = masks[0].cpu().numpy().squeeze()    # Convert to numpy and remove extra dimensions
+            
+            # # Plot the image and its corresponding mask
+            # plt.figure(figsize=(12, 6))
+            
+            # # Plot the image
+            # plt.subplot(1, 2, 1)
+            # plt.imshow(image, cmap="gray")
+            # plt.title("Image")
+            # plt.axis("off")
+            
+            # # Plot the mask
+            # plt.subplot(1, 2, 2)
+            # plt.imshow(mask, cmap="gray")
+            # plt.title("Mask")
+            # plt.axis("off")
+            
+            # # Display the plot
+            # print("Press any key to close the plot and continue...")
+            # plt.show(block=True)
+            
             outputs = (model(images) > 0.5).float().cpu().numpy()
             masks = masks.cpu().numpy()
             print("done with inference")
+
             # Accumulate batch metrics
             batch_correctness = []
             batch_completeness = []
             batch_quality = []
             batch_f1 = []
-            #batch_hd95 = []
+            # batch_hd95 = []
             
             for pred, gt in zip(outputs, masks):
                 gt_binary = (gt > 0.5).astype(np.uint8)
@@ -72,24 +123,24 @@ def evaluate_model(Config, model, test_loader, device):
                 batch_completeness.append(completeness)
                 batch_quality.append(quality)
                 batch_f1.append(f1_score(gt_binary.flatten(), pred.flatten()))
-                #batch_hd95.append(hausdorff_distance_95(pred, gt_binary))
+                # batch_hd95.append(hausdorff_distance_95(pred, gt_binary))
+
             # Calculate the average for the batch
             batch_metrics["correctness"].append(np.mean(batch_correctness))
             batch_metrics["completeness"].append(np.mean(batch_completeness))
             batch_metrics["quality"].append(np.mean(batch_quality))
             batch_metrics["f1"].append(np.mean(batch_f1))
-            #batch_metrics["hd95"].append(np.mean(batch_hd95))
+            # batch_metrics["hd95"].append(np.mean(batch_hd95))
 
-            # Print progress for every 10 batches
             if i % max(1, total_batches // 10) == 0 or i == total_batches - 1:
-                print(f"Processed {i + 1}/{total_batches} batches ({(i + 1) / total_batches * 100:.2f}%)")
+                print(f"Processed {i + 1}/{total_batches} batches "
+                      f"({(i + 1) / total_batches * 100:.2f}%)")
         
-    # Open the CSV file and write the metrics
+    # Write metrics to CSV
     with open(Config.metric_save_path, mode='w', newline='') as file:
         writer = csv.writer(file)
         writer.writerow(["Metric", "Average"])  # Header row
 
-        # Compute and write average metrics
         print("\nTest Set Metrics:")
         for metric, values in batch_metrics.items():
             avg_value = np.mean(values)
@@ -98,109 +149,146 @@ def evaluate_model(Config, model, test_loader, device):
 
     print(f"\nMetrics saved to {Config.metric_save_path}")
 
-    
-    
-def default_transform(Config):
-    transform = transforms.Compose([
-        transforms.Resize(Config.image_size),
-        transforms.ToTensor(),
-    ])
-    return transform
-
-def run_inference(Config, model, image_path, device, output_dir="./outputs"):
+###############################################################################
+# Inference on a Single Image
+###############################################################################
+def run_inference(Config, model, image_path, device, output_dir="./outputs", preprocessing=False):
     """
-    Run inference on a single image and save the predicted mask.
-
-    Args:
-        model (torch.nn.Module): The trained model.
-        image_path (str): Path to the input image.
-        transform (callable): Transformations for the input image.
-        device (torch.device): Device to run the inference on (CPU/GPU).
-        output_dir (str): Directory to save the predicted mask.
+    Run inference on a single image and save the predicted mask using OpenCV + Albumentations.
     """
     model.eval()
-    transform = default_transform(Config)  # Use the default transform here
+    transform = default_transform(Config)
+
     with torch.no_grad():
-        # Load and transform the image
-        image = Image.open(image_path).convert("L")
-        input_tensor = transform(image).unsqueeze(0).to(device)
+        # 1) Load image (grayscale) with OpenCV
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        if image is None:
+            raise ValueError(f"Could not read image from {image_path}")
         
-        # Perform inference
+        if preprocessing==True:
+            image = apply_preprocessing(image)
+
+        # 2) Apply Albumentations transform
+        # Albumentations expects a dict {"image": <numpy array>}
+        # which returns {"image": <torch.Tensor>}
+        transformed = transform(image=image)
+        input_tensor = transformed["image"].unsqueeze(0).to(device)
+        input_tensor = input_tensor.float().to(device) / 255
+
+        # 3) Perform inference
         output = model(input_tensor)
-        
-        output_mask = (output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)  # Binarize the output (Only works on cpu)
-        
-        # Resize the original image to match the predicted mask dimensions
-        resized_image = image.resize((output_mask.shape[1], output_mask.shape[0]), Image.LANCZOS)
-        
-        # Combine resized input image and predicted mask into a single image
-        input_array = np.array(resized_image)
-        mask_array = output_mask * 255  # Scale mask to 0-255
-        combined_image = np.hstack((input_array, mask_array))  # Combine side by side
-        
-        # Save the combined image
+        output_mask = (output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
+
+        # 4) Resize the original image to match the predicted mask dimensions
+        #    (mask is [H, W], so shape is (height, width))
+        resized_image = cv2.resize(
+            image,
+            (output_mask.shape[1], output_mask.shape[0]),
+            interpolation=cv2.INTER_LANCZOS4
+        )
+
+        # 5) Combine resized input image (left) and predicted mask (right)
+        mask_array = output_mask * 255
+        combined_image = np.hstack((resized_image, mask_array))
+
+        # 6) Save the combined image
         os.makedirs(output_dir, exist_ok=True)
         base_name = os.path.basename(image_path)
         combined_path = os.path.join(output_dir, f"combined_{base_name}")
-        Image.fromarray(combined_image).save(combined_path)
+        cv2.imwrite(combined_path, combined_image)
         print(f"Combined image saved to {combined_path}")
-        
-        # Optionally visualize the results
+
+        # 7) (Optional) Visualize using matplotlib
         plt.figure(figsize=(12, 6))
         plt.title("Input Image and Predicted Mask")
         plt.imshow(combined_image, cmap="gray")
         plt.axis("off")
         plt.show()
-def run_inference_on_folder(Config, model, folder_path, device, output_dir="./outputs"):
-    """
-    Run inference on all images in a folder and save the predicted masks.
 
-    Args:
-        model (torch.nn.Module): The trained model.
-        folder_path (str): Path to the folder containing input images.
-        transform (callable): Transformations for the input image.
-        device (torch.device): Device to run the inference on (CPU/GPU).
-        output_dir (str): Directory to save the predicted masks.
+###############################################################################
+# Inference on a Folder of Images
+###############################################################################
+def run_inference_on_folder(Config, model, folder_path, device, output_dir="./outputs", preprocessing=False):
     """
-    # Ensure the model is in evaluation mode
+    Run inference on all images in a folder and save the predicted masks using OpenCV + Albumentations.
+    """
     model.eval()
-    transform = default_transform(Config)  # Use the default transform here
-    # Create output directory if it doesn't exist
+    transform = default_transform(Config)
     os.makedirs(output_dir, exist_ok=True)
-    # Loop through all images in the folder
+
+    # Loop over all files in the folder
     for image_name in os.listdir(folder_path):
-        # Construct full image path
         image_path = os.path.join(folder_path, image_name)
 
-        # Check if the file is an image (optional check for extensions)
+        # Optionally check the extension
         if image_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):
             with torch.no_grad():
-                # Load and transform the image
-                image = Image.open(image_path).convert("L")
-                input_tensor = transform(image).unsqueeze(0).to(device)
+                # 1) Read image with OpenCV
+                image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+                if image is None:
+                    print(f"Skipping {image_path}, cannot read.")
+                    continue
 
-                # Perform inference
+                if preprocessing==True:
+                    image = apply_preprocessing(image)
+
+                # 2) Transform -> Torch Tensor
+                transformed = transform(image=image)
+                input_tensor = transformed["image"].unsqueeze(0).to(device)
+                input_tensor = input_tensor.float().to(device) / 255
+
+                # 3) Inference
                 output = model(input_tensor)
-                output_mask = (output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)  # Binarize the output (Only works on CPU)
+                output_mask = (output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
 
-                # Resize the original image to match the predicted mask dimensions
-                resized_image = image.resize((output_mask.shape[1], output_mask.shape[0]), Image.LANCZOS)
+                # 4) Resize the original image to match the predicted mask dimensions
+                resized_image = cv2.resize(
+                    image,
+                    (output_mask.shape[1], output_mask.shape[0]),
+                    interpolation=cv2.INTER_LANCZOS4
+                )
 
-                # Combine resized input image and predicted mask into a single image
-                input_array = np.array(resized_image)
-                mask_array = output_mask * 255  # Scale mask to 0-255
-                combined_image = np.hstack((input_array, mask_array))  # Combine side by side
+                # 5) Combine them side by side
+                mask_array = output_mask * 255
+                combined_image = np.hstack((resized_image, mask_array))
 
-                # Save the combined image
+                # 6) Save combined image
                 combined_path = os.path.join(output_dir, f"combined_{image_name}")
-                Image.fromarray(combined_image).save(combined_path)
+                cv2.imwrite(combined_path, combined_image)
                 print(f"Combined image saved to {combined_path}")
 
-                # Optionally visualize the results
-                # Uncomment the following if you want to see the images as well
+                # 7) (Optional) visualize
                 # plt.figure(figsize=(12, 6))
                 # plt.title(f"Input Image and Predicted Mask - {image_name}")
                 # plt.imshow(combined_image, cmap="gray")
                 # plt.axis("off")
                 # plt.show()
 
+
+def apply_preprocessing(image: np.ndarray) -> np.ndarray:
+    """
+    Applies CLAHE and Bilateral Filtering to a grayscale image.
+
+    Parameters:
+        image (numpy.ndarray): Input grayscale image.
+
+    Returns:
+        numpy.ndarray: The preprocessed image.
+    """
+    if len(image.shape) != 2:
+        raise ValueError("Input image must be a grayscale image with 2 dimensions.")
+
+    # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
+    clahe = cv2.createCLAHE(clipLimit=45, tileGridSize=(10, 10))
+    clahe_img = clahe.apply(image)
+
+    # Apply Bilateral Filter
+    # Bilateral filtering preserves edges while smoothing
+    bilateral_filtered = cv2.bilateralFilter(
+        clahe_img, 
+        d=20,            # Diameter of each pixel neighborhood
+        sigmaColor=26,   # Filter sigma in the color space
+        sigmaSpace=5     # Filter sigma in the coordinate space
+    )
+
+    return bilateral_filtered

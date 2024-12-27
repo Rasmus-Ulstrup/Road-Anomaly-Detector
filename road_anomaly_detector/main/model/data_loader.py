@@ -5,12 +5,14 @@ import cv2
 from sklearn.model_selection import train_test_split
 from config.config import Config
 import numpy as np
-
+from metrics.metrics import default_transform
 import torch
 import matplotlib.pyplot as plt
 
 import albumentations as A
 from albumentations.pytorch import ToTensorV2
+
+from metrics.metrics import apply_preprocessing
 
 def calculate_mean_std(image_dir):
     """
@@ -43,7 +45,7 @@ def calculate_mean_std(image_dir):
     return mean, std
 
 class SegmentationDataset(Dataset):
-    def __init__(self, image_paths, mask_paths, transform=None):
+    def __init__(self, image_paths, mask_paths, transform=None, preprocessing=False):
         """
         Args:
             image_paths (list): List of image file paths.
@@ -53,6 +55,7 @@ class SegmentationDataset(Dataset):
         self.image_paths = image_paths
         self.mask_paths = mask_paths
         self.transform = transform
+        self.preprocessing = preprocessing
 
     def __len__(self):
         return len(self.image_paths)
@@ -62,7 +65,7 @@ class SegmentationDataset(Dataset):
         image_pre = cv2.imread(self.image_paths[idx], cv2.IMREAD_GRAYSCALE)  # Loads as BGR by default
         if image_pre is None:
             raise ValueError(f"Image not found or unable to read: {self.image_paths[idx]}")
-        image_pre = np.expand_dims(image_pre, axis=-1)
+        
 
         mask = cv2.imread(self.mask_paths[idx], cv2.IMREAD_GRAYSCALE)  # Load mask as grayscale
         if mask is None:
@@ -70,14 +73,19 @@ class SegmentationDataset(Dataset):
         # Load images and masks
         #image = Image.open(self.image_paths[idx]).convert("L")  # Convert to grayscale if required
         #mask = Image.open(self.mask_paths[idx]).convert("L")    # Same for masks
+
+        if self.preprocessing == True:
+            image_pre = apply_preprocessing(image_pre)
+        
+        image_pre = np.expand_dims(image_pre, axis=-1)
         
         # Apply transformations
         if self.transform:
             augmented = self.transform(image=image_pre, mask=mask)
             image = augmented['image'].float() / 255
-            mask = augmented['mask'].float()  # Ensure mask is float32 can be normalized with / 255.0
+            mask = augmented['mask'].float() 
 
-            # # Display the image and mask
+            # Display the image and mask
             # plt.figure(figsize=(12, 6))
             # plt.subplot(1, 2, 1)
             # plt.imshow(image.numpy().squeeze(), cmap="gray")
@@ -98,7 +106,7 @@ class SegmentationDataset(Dataset):
         return image, mask
 
 
-def get_data_loaders(Config):
+def get_data_loaders(Config, preprocessing=False):
     """
     Args:
         dataset_name (str): The name of the dataset to load (e.g., 'cracktree200', 'forest', 'gaps384', 'cfd', 'mixed').
@@ -143,25 +151,9 @@ def get_data_loaders(Config):
     }
     
     testsets = {
-        "cracktree200": {
-            "image_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Test_sets/cracktree200/Images"),
-            "mask_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Test_sets/cracktree200/Masks")
-        },
-        "forest": {
-            "image_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Test_sets/forest/Images"),
-            "mask_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Test_sets/forest/Masks")
-        },
-        "gaps384": {
-            "image_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Test_sets/GAPS384/Images"),
-            "mask_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Test_sets/GAPS384/Masks")
-        },
-        "cfd": {
-            "image_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Test_sets/CrackForestDataset_(CFD)/Images"),
-            "mask_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Test_sets/CrackForestDataset_(CFD)/Masks")
-        },
-        "mixed": {
-            "image_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Test_sets/Mixed/Images"),
-            "mask_dir": os.path.expanduser(r"~/Documents/datasetz/datasets/Test_sets/Mixed/Masks")
+        "test": {
+            "image_dir": os.path.expanduser(r"~/Documents/testsetz/images"),
+            "mask_dir": os.path.expanduser(r"~/Documents/testsetz/masks")
         }
     }
 
@@ -189,28 +181,22 @@ def get_data_loaders(Config):
     if len(image_paths) != len(mask_paths):
         raise ValueError("The number of images and masks do not match.")
 
-    # Load image and mask paths
-    image_paths = sorted([os.path.join(image_dir, fname) for fname in os.listdir(image_dir)])
-    mask_paths = sorted([os.path.join(mask_dir, fname) for fname in os.listdir(mask_dir)])
-
-    # Split into train, validation, and test sets
-    train_images, temp_images, train_masks, temp_masks = train_test_split(
+      # Split into train (80%), validation (20%)
+    train_images, val_images, train_masks, val_masks = train_test_split(
         image_paths, mask_paths, test_size=0.2, random_state=42
-    )
-    val_images, test_images, val_masks, test_masks = train_test_split(
-        temp_images, temp_masks, test_size=0.5, random_state=42
     )
 
     # Compute mean and std for normalization based on the training set
-    train_image_dir = image_dir  # Ensure this points to the actual training images
-    mean, std = calculate_mean_std(train_image_dir)
+    # train_image_dir = image_dir  # Ensure this points to the actual training images
+    mean, std = calculate_mean_std(image_dir)
 
     # Define transformations
-    val_transform = A.Compose([
-        A.Resize(height=Config.image_size[0], width=Config.image_size[1]),
-        #A.Normalize(mean=(mean,), std=(std,)),
-        ToTensorV2()
-    ])
+    # val_transform = A.Compose([
+    #     A.Resize(height=Config.image_size[0], width=Config.image_size[1]),
+    #     #A.Normalize(mean=(mean,), std=(std,)),
+    #     ToTensorV2()
+    # ])
+    val_transform = default_transform(Config)
     if Config.argumentation == 1:
         print("Training with argumentation")
         train_transform = A.Compose([
@@ -240,9 +226,30 @@ def get_data_loaders(Config):
         train_transform = val_transform
     
     # Create datasets for train, val, and test
-    train_dataset = SegmentationDataset(train_images, train_masks, transform=train_transform)
-    val_dataset = SegmentationDataset(val_images, val_masks, transform=val_transform)
-    test_dataset = SegmentationDataset(test_images, test_masks, transform=val_transform)
+    train_dataset = SegmentationDataset(train_images, train_masks, transform=train_transform, preprocessing=preprocessing)
+    val_dataset = SegmentationDataset(val_images, val_masks, transform=val_transform, preprocessing=preprocessing)
+
+    test_image_dir = testsets["test"]["image_dir"]
+    test_mask_dir = testsets["test"]["mask_dir"]
+
+    test_image_paths = sorted([
+        os.path.join(test_image_dir, fname) 
+        for fname in os.listdir(test_image_dir) 
+        if fname.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff'))
+    ])
+    test_mask_paths = sorted([
+        os.path.join(test_mask_dir, fname) 
+        for fname in os.listdir(test_mask_dir) 
+        if fname.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tif', '.tiff'))
+    ])
+
+    if len(test_image_paths) != len(test_mask_paths):
+        raise ValueError("The number of images and masks in testsetz do not match.")
+    
+    
+    # print(f"length of test images: {len(test_image_paths)}")
+
+    test_dataset = SegmentationDataset(test_image_paths, test_mask_paths, transform=val_transform, preprocessing=preprocessing)
 
     # Create data loaders
     train_loader = DataLoader(
@@ -267,18 +274,9 @@ def get_data_loaders(Config):
         pin_memory=True
     )
 
-    # for images, masks in train_loader:
-    #     print(f"Images dtype: {images.dtype}")  # Should be torch.float32
-    #     print(f"Masks dtype: {masks.dtype}")    # Should be torch.float32
-    #     break
-
-    # for images, masks in train_loader:
-    #     print(f"Images shape: {images.shape}")  # Expected: [batch_size, 3, H, W]
-    #     print(f"Masks shape: {masks.shape}")    # Expected: [batch_size, 1, H, W]
-    #     break
     for images, masks in train_loader:
-        print(f"Images min: {torch.min(images)} Images max: {torch.max(images)}")  # Expected: [batch_size, 3, H, W]
-        print(f"Mask min: {torch.min(masks)} Mask max: {torch.max(masks)}")  # Expected: [batch_size, 3, H, W]
+        print(f"Images min: {torch.min(images)} Images max: {torch.max(images)}")
+        print(f"Mask min: {torch.min(masks)} Mask max: {torch.max(masks)}")
         break
 
     return train_loader, val_loader, test_loader

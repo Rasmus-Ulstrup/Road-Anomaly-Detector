@@ -6,7 +6,7 @@ from models.FPN import FPN
 import os
 import re
 
-
+import segmentation_models_pytorch as smp
 
 def sanitize_learning_rate(lr):
     """
@@ -33,7 +33,8 @@ class Config:
                  epochs=50, 
                  patience=20,
                  alpha=0.25,
-                 gamma=2):
+                 gamma=2,
+                 preprocessing=False):
         self.model_name = model_name.lower()
         self.dataset_name = dataset_name
         self.batch_size = batch_size
@@ -50,6 +51,7 @@ class Config:
             'alpha' : alpha,
             'gamma' : gamma
         }
+        self.preprocessing = preprocessing
         
 
         # Prepare loss suffix based on loss function type
@@ -99,6 +101,27 @@ class Config:
             return HED().to(self.device)
         elif self.model_name == "FPN".lower():
             return FPN().to(self.device)
+        elif self.model_name == "smp_unet".lower():  # Example for SMP U-Net
+            # # Create the base SMP model
+            # base_model = smp.Unet(
+            #     encoder_name="resnet34",  # Specify encoder
+            #     encoder_weights="imagenet",  # Pre-trained weights
+            #     in_channels=1,  # Number of input channels (e.g., grayscale)
+            #     classes=1  # Number of output classes
+            # )
+            # # Add a Sigmoid activation layer to the model
+            # return torch.nn.Sequential(base_model, torch.nn.Sigmoid()).to(self.device)
+            # Create an unverified SSL context
+            import ssl
+            ssl._create_default_https_context = ssl._create_unverified_context
+            return smp.Unet(
+                    encoder_name="densenet201",    # Changed encoder to DenseNet201
+                    encoder_weights="imagenet",     # Use pre-trained weights
+                    in_channels=1,                  # Grayscale images
+                    classes=1,                      # Single output class
+                    decoder_channels=(512, 256, 128, 64, 32),  # U-Net decoder channels
+                    activation="sigmoid"            # Sigmoid activation for binary segmentation
+                ).to(self.device)
         else:
             raise ValueError(f"Model '{self.model_name}' not supported.")
         

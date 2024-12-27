@@ -89,6 +89,10 @@ def run_training(config, log_dir):
         if "gamma" in config["loss_function"]:
             cmd.extend(["--gamma", str(config["loss_function"]["gamma"])])
 
+    # **Add Preprocessing Flag if Enabled**
+    if config.get("preprocessing", False):
+        cmd.append("--preprocessing")
+
     # Define log file name based on configuration
     log_filename = construct_log_filename("train", config, config["loss_function"])
     log_path = os.path.join(log_dir, log_filename)
@@ -111,6 +115,10 @@ def run_testing(config, log_dir, model_save_path):
         "--batch_size", str(config["batch_size"]),
         "--model_path", model_save_path
     ]
+
+    # **Add Preprocessing Flag if Enabled for Testing (Optional)**
+    if config.get("preprocessing", False):
+        cmd.append("--preprocessing")
 
     # Define log file name based on configuration
     log_filename = construct_log_filename("test", config, config["loss_function"])
@@ -165,7 +173,8 @@ def main():
                     "epochs": dataset_params.get("epochs", config.get("global", {}).get("epochs", 50)),
                     "patience": dataset_params.get("patience", config.get("global", {}).get("patience", 10)),
                     "image_size": dataset_params.get("image_size", config.get("global", {}).get("image_size", [512, 512])),
-                    "test_size": dataset_params.get("test_size", config.get("global", {}).get("test_size", 0.2))
+                    "test_size": dataset_params.get("test_size", config.get("global", {}).get("test_size", 0.2)),
+                    "preprocessing": dataset_params.get("preprocessing", config.get("global", {}).get("preprocessing", False))  # **Include Preprocessing Flag**
                 }
 
                 # Define the model save path based on the naming convention
