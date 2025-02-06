@@ -79,7 +79,12 @@ class HED(nn.Module):
         out4 = self.layer4(out3)
         out5 = self.layer5(out4)
         
-        # Side outputs
+        # Side outputs with sigmoid activation
+        # side1 = torch.sigmoid(F.interpolate(self.side1(out1), size=x.shape[2:], mode='bilinear', align_corners=False))
+        # side2 = torch.sigmoid(F.interpolate(self.side2(out2), size=x.shape[2:], mode='bilinear', align_corners=False))
+        # side3 = torch.sigmoid(F.interpolate(self.side3(out3), size=x.shape[2:], mode='bilinear', align_corners=False))
+        # side4 = torch.sigmoid(F.interpolate(self.side4(out4), size=x.shape[2:], mode='bilinear', align_corners=False))
+        # side5 = torch.sigmoid(F.interpolate(self.side5(out5), size=x.shape[2:], mode='bilinear', align_corners=False))
         side1 = F.interpolate(self.side1(out1), size=x.shape[2:], mode='bilinear', align_corners=False)
         side2 = F.interpolate(self.side2(out2), size=x.shape[2:], mode='bilinear', align_corners=False)
         side3 = F.interpolate(self.side3(out3), size=x.shape[2:], mode='bilinear', align_corners=False)
@@ -89,5 +94,6 @@ class HED(nn.Module):
         # Merge outputs
         merged = self.merge(torch.cat([side1, side2, side3, side4, side5], dim=1))
         final_output = self.final_activation(merged)
-        return final_output
+        return [side1, side2, side3, side4, side5, final_output]
+        # return final_output
 #model = HED()

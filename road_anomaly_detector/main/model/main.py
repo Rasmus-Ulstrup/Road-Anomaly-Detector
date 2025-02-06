@@ -93,6 +93,7 @@ def main():
     tile_test_parser.add_argument('--preprocessing', action='store_true', help='Enable preprocessing (CLAHE and Bilateral Filter)')
 
     args = parser.parse_args()
+    print(args)
 
     # Initialize Config based on the mode
     if args.mode == "train":
@@ -108,7 +109,8 @@ def main():
             patience=args.patience,
             alpha=args.alpha,
             gamma=args.gamma,
-            preprocessing=args.preprocessing  # Add preprocessing to Config
+            preprocessing=args.preprocessing,  # Add preprocessing to Config
+            Argumentation=args.argumentation
         )
         config.update_trainer_save_paths()
         train_loader, val_loader, _ = get_data_loaders(config, preprocessing=config.preprocessing)
@@ -173,7 +175,7 @@ def main():
         config = Config(model_name=args.model_name, image_size=args.image_size, preprocessing=args.preprocessing)
         config.model.load_state_dict(torch.load(args.model_path, map_location=config.device))  # Ensure compatibility
         
-        run_main_tiles_metrics(
+        _=run_main_tiles_metrics(
             Config=config, 
             folder_dir=args.folder_path, 
             output_dir=args.output_dir,

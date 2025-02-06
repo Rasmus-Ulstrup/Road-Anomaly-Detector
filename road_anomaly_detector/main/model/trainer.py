@@ -152,6 +152,11 @@ class Trainer:
                 else:
                     loss = self.loss_function(outputs, masks)
                 
+
+                # if isinstance(outputs, list):
+                #     loss = sum(w * self.loss_function(output, masks) for w, output in zip(self.config.loss_weights, outputs)) 
+                # else:
+                #     loss = self.loss_function(outputs, masks)
                 loss.backward()
                 self.optimizer.step()
                 train_loss += loss.item()

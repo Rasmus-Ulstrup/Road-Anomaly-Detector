@@ -79,6 +79,10 @@ class FPN(nn.Module):
         td1 = td1 + lateral2_resized
 
         # Multi-scale outputs
+        # o4 = torch.sigmoid(F.interpolate(self.output4(td4), size=x.shape[2:], mode='bilinear', align_corners=False))
+        # o3 = torch.sigmoid(F.interpolate(self.output3(td3), size=x.shape[2:], mode='bilinear', align_corners=False))
+        # o2 = torch.sigmoid(F.interpolate(self.output2(td2), size=x.shape[2:], mode='bilinear', align_corners=False))
+        # o1 = torch.sigmoid(F.interpolate(self.output1(td1), size=x.shape[2:], mode='bilinear', align_corners=False))
         o4 = F.interpolate(self.output4(td4), size=x.shape[2:], mode='bilinear', align_corners=False)
         o3 = F.interpolate(self.output3(td3), size=x.shape[2:], mode='bilinear', align_corners=False)
         o2 = F.interpolate(self.output2(td2), size=x.shape[2:], mode='bilinear', align_corners=False)
@@ -89,7 +93,8 @@ class FPN(nn.Module):
         final_output = self.merge(merged)
         final_output = self.final_activation(final_output)
 
-        return final_output
+        return [o4, o3, o2, o1, final_output]
+        #return final_output
 
 # Instantiate and move model to GPU if available
 # model = FPN().cuda()

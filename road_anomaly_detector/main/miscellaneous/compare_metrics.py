@@ -89,7 +89,8 @@ def extract_metrics(model_files_path, output_csv='compiled_metrics.csv'):
 
 if __name__ == "__main__":
     # Replace this path with your actual model_files directory path
-    model_files_directory = '/home/crack/Road-Anomaly-Detector/road_anomaly_detector/main/model/model_files'
-    
+    # model_files_directory = '/home/crack/Road-Anomaly-Detector/road_anomaly_detector/main/model/model_files'
+    model_files_directory = '/home/crack/models_preprocessed'
+    # model_files_directory = '/home/crack/model_no_preprocessed'
     # Call the function to extract and compile metrics
     extract_metrics(model_files_directory)

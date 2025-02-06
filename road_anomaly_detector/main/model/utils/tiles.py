@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from torchvision import transforms
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from metrics.metrics import default_transform, apply_preprocessing, compute_metrics
+from metrics.metrics import default_transform, apply_preprocessing, compute_metrics, compute_centerline_metrics
 from sklearn.metrics import f1_score
 # Albumentations imports
 import albumentations as A
@@ -131,12 +131,21 @@ def run_inference(Config, model, tile, device, preprocessing):
             input_tensor = transformed["image"].unsqueeze(0).to(device)
             input_tensor = input_tensor.float().to(device) / 255
 
-            # Perform inference
-            output = model(input_tensor)
+            # # Perform inference
+            # output = model(input_tensor)
 
-            # Assuming output is a single-channel mask
-            output_mask = (output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)  # Binarize the output
+            # # Assuming output is a single-channel mask
+            # output_mask = (output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)  # Binarize the output
+            #BEAR
+            outputs = model(input_tensor)  # Expecting a list
+            if not isinstance(outputs, list):
+                output_mask = (outputs.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
+            else:
+                final_output = outputs[-1]
+                # Extract the final output
+                output_mask = (final_output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
 
+            
             # Scale mask to 0-255
             mask_array = output_mask * 255
 
@@ -315,6 +324,8 @@ def combine_tiles_into_image_with_blending(original_image_path, masks, output_im
         print(f"Error while combining tiles with blending: {e}")
         raise
 
+    return final_mask
+
 # ------------------------------
 # Main Processing Function
 # ------------------------------
@@ -457,12 +468,14 @@ def run_main_tiles_metrics(Config, folder_dir, output_dir, model, device, tile_s
         return
     
     image_metrics = {
-        "correctness": [],
-        "completeness": [],
-        "quality": [],
-        "f1": []
-        # "hd95": []
-    }
+            "correctness": [],
+            "completeness": [],
+            "quality": [],
+            "precision": [],
+            "recall": [],
+            "IoU": [],
+            "f1": []
+        }
 
     for image_file, mask_file in zip(image_files, mask_files):
         image_path = os.path.join(image_dir, image_file)
@@ -514,7 +527,7 @@ def run_main_tiles_metrics(Config, folder_dir, output_dir, model, device, tile_s
                 continue
 
             # Step 3: Combine masks with blending (in-memory)
-            combine_tiles_into_image_with_blending(
+            final_mask_prediction = combine_tiles_into_image_with_blending(
                 original_image_path=image_path,
                 masks=masks,
                 output_image_path=combined_mask_path,
@@ -524,60 +537,81 @@ def run_main_tiles_metrics(Config, folder_dir, output_dir, model, device, tile_s
 
             print(f"Starting metrics calculation for: {image_path}")
 
-            print(f"Splitting mask into tiles for: {mask_path}")
-            mask_tiles = split_image_into_tiles(
-                image_path=mask_path,
-                tile_size=tile_size,
-                overlap=overlap,
-                save_tiles=False,
-                output_dir=image_output_dir if save_tiles else './output/tiles/images'
-            )
-            print(f"Split mask into {len(mask_tiles)} tiles.")
+            # print(f"Splitting mask into tiles for: {mask_path}")
+            # mask_tiles = split_image_into_tiles(
+            #     image_path=mask_path,
+            #     tile_size=tile_size,
+            #     overlap=overlap,
+            #     save_tiles=False,
+            #     output_dir=image_output_dir if save_tiles else './output/tiles/images'
+            # )
+            # print(f"Split mask into {len(mask_tiles)} tiles.")
 
             # Compute metrics
-            print("Computing metrics")
-            sorted_masks = sorted(masks, key=sort_key)
-            sorted_mask_tiles = sorted(mask_tiles, key=sort_key)
+            #print("Computing metrics")
+            # sorted_masks = sorted(masks, key=sort_key)
+            # sorted_mask_tiles = sorted(mask_tiles, key=sort_key)
 
-            validate_sorted_lists(sorted_masks, sorted_mask_tiles)
+            # validate_sorted_lists(sorted_masks, sorted_mask_tiles)
 
-            for pred_dict, gt_binary_dict in zip(sorted_masks, sorted_mask_tiles):
-                # Check postions
-                if pred_dict['position'] != gt_binary_dict['position']:
-                    print("WARNING: position mismatch!")
+            real_mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+            if real_mask is None:
+                raise ValueError(f"Could not load the image at {mask_path}")
 
-                #  # Display the image and mask
-                # plt.figure(figsize=(12, 6))
-                # plt.subplot(1, 2, 1)
-                # plt.imshow(pred_dict['mask'], cmap="gray")
-                # plt.title("Transformed Image")
-                # plt.axis("off")
+            
+            gt_binary = (real_mask > 0).astype(np.uint8)  # Non-zero values become 1
+            pred_binary = (final_mask_prediction > 0).astype(np.uint8)  # Non-zero values become 1
+            f1 = f1_score(gt_binary.flatten(), pred_binary.flatten(), zero_division=1)
+            if f1 == 0:
+                f1 = 1
+            precision, recall, IoU = compute_metrics(pred_binary, gt_binary)
+            correctness, completeness, quality = compute_centerline_metrics(pred_binary, gt_binary, 2)
 
-                # plt.subplot(1, 2, 2)
-                # plt.imshow(gt_binary_dict['tile'], cmap="gray")
-                # plt.title("not transformed Image")
-                # plt.axis("off")
+            # for pred_dict, gt_binary_dict in zip(sorted_masks, sorted_mask_tiles):
+            #     # Check postions
+            #     if pred_dict['position'] != gt_binary_dict['position']:
+            #         print("WARNING: position mismatch!")
 
-                # print("Press any key to close the plot and continue...")
-                # plt.show(block=True)
+            #     #  # Display the image and mask
+            #     # plt.figure(figsize=(12, 6))
+            #     # plt.subplot(1, 2, 1)
+            #     # plt.imshow(pred_dict['mask'], cmap="gray")
+            #     # plt.title("Transformed Image")
+            #     # plt.axis("off")
 
-                pred = pred_dict['mask'] / 255
-                gt_binary = gt_binary_dict['tile'] / 255
-                #print("Prediction unquie = ", np.unique(pred))
-                #print("mask unquie = ", np.unique(gt_binary))
-                correctness, completeness, quality = compute_metrics(pred, gt_binary)
-                tile_correctness.append(correctness)
-                tile_completeness.append(completeness)
-                tile_quality.append(quality)
-                tile_f1.append(f1_score(gt_binary.flatten(), pred.flatten(), zero_division=1))
+            #     # plt.subplot(1, 2, 2)
+            #     # plt.imshow(gt_binary_dict['tile'], cmap="gray")
+            #     # plt.title("not transformed Image")
+            #     # plt.axis("off")
+
+            #     # print("Press any key to close the plot and continue...")
+            #     # plt.show(block=True)
+
+            #     pred = pred_dict['mask'] / 255
+            #     gt_binary = gt_binary_dict['tile'] / 255
+            #     #print("Prediction unquie = ", np.unique(pred))
+            #     #print("mask unquie = ", np.unique(gt_binary))
+            #     correctness, completeness, quality = compute_metrics(pred, gt_binary)
+            #     tile_correctness.append(correctness)
+            #     tile_completeness.append(completeness)
+            #     tile_quality.append(quality)
+            #     tile_f1.append(f1_score(gt_binary.flatten(), pred.flatten(), zero_division=1))
 
             # calculate average for image
-            image_metrics["correctness"].append(np.mean(tile_correctness))
-            image_metrics["completeness"].append(np.mean(tile_completeness))
-            image_metrics["quality"].append(np.mean(tile_quality))
-            image_metrics["f1"].append(np.mean(tile_f1))
+            image_metrics["correctness"].append(correctness)
+            image_metrics["completeness"].append(completeness)
+            image_metrics["quality"].append(quality)
+            image_metrics["precision"].append(precision)
+            image_metrics["recall"].append(recall)
+            image_metrics["IoU"].append(IoU)
+            image_metrics["f1"].append(f1)
 
-            print(f"Calculated metrics for image {image_path}")
+            # print(f"Calculated metrics for image {image_path}")
+            # print(f"Correct {correctness}")
+            # print(f"Complete {completeness}")
+            # print(f"Qual {quality}")
+            # print(f"F {f1}")
+            
              
             
         except Exception as e:
@@ -592,6 +626,8 @@ def run_main_tiles_metrics(Config, folder_dir, output_dir, model, device, tile_s
     for metric, values in image_metrics.items():
         avg_value = np.mean(values)
         print(f"{metric.capitalize()}: {avg_value:.4f}")
+
+    return image_metrics
 
 # ------------------------------
 # Main Execution Block

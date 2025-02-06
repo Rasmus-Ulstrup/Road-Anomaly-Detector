@@ -10,6 +10,8 @@ import argparse
 import logging
 import math  # for exponential function
 
+import matplotlib.pyplot as plt
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -117,9 +119,24 @@ def main():
 
         # Skeletonize the mask
         skeleton = skeletonize(mask_bin.astype(bool))
+        # # display results
+        # fig, axes = plt.subplots(nrows=1, ncols=2, figsize=(8, 4), sharex=True, sharey=True)
+
+        # ax = axes.ravel()
+
+        # ax[0].imshow(distance, cmap=plt.cm.gray)
+        # ax[0].axis('off')
+        # ax[0].set_title('original', fontsize=20)
+
+        # ax[1].imshow(skeleton, cmap=plt.cm.gray)
+        # ax[1].axis('off')
+        # ax[1].set_title('skeleton', fontsize=20)
+
+        # fig.tight_layout()
+        # plt.show()
 
         # Label connected components in the skeleton
-        labeled_skel = label(skeleton)
+        labeled_skel = label(skeleton,connectivity=2)
 
         total_crack_area = 0.0  # Sum of (length_i * width_i) in m^2
         total_pixels = mask_bin.size
@@ -181,6 +198,7 @@ def main():
             cv2.rectangle(annotated_img, start_point, end_point, color, thickness)
 
         out_path = os.path.join(output_annotated_folder, filename)
+        print(out_path)
         cv2.imwrite(out_path, annotated_img)
 
     # After processing all images, compute aggregated metrics per road

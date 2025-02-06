@@ -84,23 +84,24 @@ class SegmentationDataset(Dataset):
             augmented = self.transform(image=image_pre, mask=mask)
             image = augmented['image'].float() / 255
             mask = augmented['mask'].float() 
-
+            mask = (mask > 127).float()  # Binary masks
+            
+            
             # Display the image and mask
             # plt.figure(figsize=(12, 6))
             # plt.subplot(1, 2, 1)
-            # plt.imshow(image.numpy().squeeze(), cmap="gray")
+            # plt.imshow(mask, cmap="gray") #image.numpy().squeeze()
             # plt.title("Transformed Image")
             # plt.axis("off")
-
+            
             # plt.subplot(1, 2, 2)
-            # plt.imshow(image_pre, cmap="gray")
+            # plt.imshow(mask, cmap="gray")
             # plt.title("not transformed Image")
             # plt.axis("off")
 
             # print("Press any key to close the plot and continue...")
             # plt.show(block=True)
             
-            mask = (mask > 0.5).float()  # Binary masks
             mask = mask.unsqueeze(0)  # Add channel dimension
 
         return image, mask
@@ -208,7 +209,7 @@ def get_data_loaders(Config, preprocessing=False):
                 rotate_limit=30,
                 p=0.75
             ),
-            A.GaussNoise(var_limit=(0.001, 0.005), p=0.5),
+            A.GaussNoise(std_range=(0.001, 0.005), p=0.5),
             A.RandomBrightnessContrast(
                 brightness_limit=(-0.15, 0.15),
                 contrast_limit=(-0.15, 0.15),

@@ -9,3 +9,5 @@ road_anomaly_detector/main/miscellaneous/tiles_folder/
 road_anomaly_detector/main/miscellaneous/PCSM
 road_anomaly_detector/main/data/
 road_anomaly_detector/main/model/output
+road_anomaly_detector/main/model/labeled_test/raw_images/
+road_anomaly_detector/main/model/labeled_test/
