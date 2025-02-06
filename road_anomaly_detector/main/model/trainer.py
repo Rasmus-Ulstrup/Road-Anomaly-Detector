@@ -10,11 +10,11 @@ import pprint
 
 class Trainer:
     def __init__(self, model, train_loader, val_loader, config):
-        self.config = config  # Correctly assign the passed config object
+        self.config = config 
         self.model = model.to(config.device)
         self.train_loader = train_loader
         self.val_loader = val_loader
-        self.device = config.device  # Get device from the config object
+        self.device = config.device 
         self.num_epochs = config.epochs
         self.learning_rate = config.learning_rate
         self.patience = config.patience
@@ -24,8 +24,7 @@ class Trainer:
         # Initialize optimizer
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
 
-        # Select the loss function
-        #print(config.loss_kwargs)
+        # Select loss function
         self.loss_function = self.select_loss_function(config.loss_function, **config.loss_kwargs)
 
         self.best_val_loss = float('inf')
@@ -35,7 +34,7 @@ class Trainer:
         self.train_losses = []
         self.val_losses = []
 
-        # Print all variables using the beautiful printer
+        # Print all variables
         self.print_trainer_variables()
 
     def print_trainer_variables(self):
@@ -62,33 +61,30 @@ class Trainer:
         if loss_type == "dice":
             return self.dice_loss
         elif loss_type == "bce":
-            # Set alpha to 0.9 by default if it's not passed in kwargs
-            pos_weight = kwargs.get('pos_weight', 0.9)  # Adjust based on dataset
+            # Set alpha to 0.9 by default, adjust based on dataset
+            pos_weight = kwargs.get('pos_weight', 0.9)
             pos_weight_tensor = torch.tensor([pos_weight], dtype=torch.float32).to(self.device)
             return torch.nn.BCELoss()
         elif loss_type == "ce":
             return self.cross_entropy_loss()
         elif loss_type == "focal":
             alpha = kwargs.get('alpha', 0.25)  # Alpha to mittigate class imbalance
-            gamma = kwargs.get('gamma', 2)  # Default gamma for focusing on hard examples
+            gamma = kwargs.get('gamma', 2)     #Gamma for focusing on hard examples
             print(f"Using Focal with alpha: {alpha} and gamma: {gamma}")
             return self.focal_loss(gamma)
         elif loss_type == "tversky":
-            alpha = kwargs.get('alpha', 0.3)  # Default alpha
-            beta = kwargs.get('gamma', 0.7)   # Default beta (called gamma)
+            alpha = kwargs.get('alpha', 0.3)
+            beta = kwargs.get('gamma', 0.7) 
             print(f"Using tversky with alpha: {alpha} and beta: {beta}")
             return self.tversky_loss(alpha, beta)
         else:
             raise ValueError(f"Loss function {loss_type} not supported")
 
-    def dice_loss(self, pred, target, smooth=1e-5):
-        # Remove or comment out the debug statement after verification
-        # print(pred.unique())
-
+    def dice_loss(self, pred, target, smooth=1e-5): #default smoothing
         pred = pred.contiguous()
         target = target.contiguous()
         
-        # Compute intersection and sums over spatial dimensions (height and width)
+        # Compute intersection and sums over spatial dimensions
         intersection = (pred * target).sum(dim=(2, 3))
         sum_pred = pred.sum(dim=(2, 3))
         sum_target = target.sum(dim=(2, 3))
@@ -99,8 +95,7 @@ class Trainer:
         # Return the average Dice loss over the batch
         return 1 - dice.mean()
 
-    def cross_entropy_loss(self):
-        """Cross-Entropy Loss for multi-class segmentation."""
+    def cross_entropy_loss(self): #cross entropy not used, as BCE is used instead
         def ce_loss(inputs, targets):
             inputs = inputs.contiguous()
             targets = targets.contiguous()
@@ -111,16 +106,16 @@ class Trainer:
 
 
     def focal_loss(self, alpha=0.25, gamma=2):
-        """Focal loss implementation for binary segmentation."""
+        #Focal loss implementation for binary segmentation
         def fl_loss(inputs, targets):
-            # Sigmoid is already applied in the model
+            # Sigmoid already applied in the models
             BCE_loss = F.binary_cross_entropy(inputs, targets, reduction='none')
             pt = torch.exp(-BCE_loss)  # Probability of being classified correctly
             loss = alpha * (1 - pt) ** gamma * BCE_loss
             return loss.mean()
         
         return fl_loss
-
+    #Tversky loss function with variable alpha and beta
     def tversky_loss(self, alpha, beta, smooth=1e-5):
         def loss_fn(inputs, targets):
             true_pos = (inputs * targets).sum(dim=(1, 2, 3))
@@ -146,17 +141,11 @@ class Trainer:
                 self.optimizer.zero_grad()
                 outputs = self.model(images)
                 
-                # Handle multi-output models
+                # Handle multi-output models (HED and FPN)
                 if isinstance(outputs, list):
                     loss = sum(self.loss_function(output, masks) for output in outputs) / len(outputs)
                 else:
                     loss = self.loss_function(outputs, masks)
-                
-
-                # if isinstance(outputs, list):
-                #     loss = sum(w * self.loss_function(output, masks) for w, output in zip(self.config.loss_weights, outputs)) 
-                # else:
-                #     loss = self.loss_function(outputs, masks)
                 loss.backward()
                 self.optimizer.step()
                 train_loss += loss.item()
@@ -173,7 +162,7 @@ class Trainer:
                     val_images, val_masks = val_images.to(self.device), val_masks.to(self.device)
                     val_outputs = self.model(val_images)
                     
-                    # Handle multi-output models
+                    # Handle multi-output models (HED and FPN)
                     if isinstance(val_outputs, list):
                         val_loss += sum(self.loss_function(output, val_masks) for output in val_outputs) / len(val_outputs)
                     else:
@@ -192,12 +181,12 @@ class Trainer:
         self.plot_losses()
 
     def _check_improvement(self, val_loss):
-        """Check if the model improved and handle early stopping."""
+        #Checks improvement and increment patiance if no improvement is there
         if val_loss < self.best_val_loss:
             self.best_val_loss = val_loss
             self.epochs_without_improvement = 0
             print("Model improved")
-            torch.save(self.model.state_dict(), self.config.model_save_path)        #Saves the latest best model
+            torch.save(self.model.state_dict(), self.config.model_save_path)   #Save the latest best model
         else:
             self.epochs_without_improvement += 1
             print(f"No improvement in validation loss for {self.epochs_without_improvement} epochs.")
@@ -206,13 +195,13 @@ class Trainer:
             print(f"Early stopping after {self.epochs_without_improvement} epochs without improvement.")
             print(f"Best validation loss: {self.best_val_loss:.4f}")
             print(f"Model saved to {self.model_save_path}")
-            return True  # Indicate that training should stop
+            return True  # training should stop
         return False  # Continue training
 
     def plot_losses(self):
-        """Plot training and validation losses over epochs."""
+        #Plot training and validation losses over epochs
 
-        # Convert all loss values to floats if they aren't already
+        # Convert all loss values to floats
         train_losses = [loss if isinstance(loss, float) else loss.cpu().item() for loss in self.train_losses]
         val_losses = [loss if isinstance(loss, float) else loss.cpu().item() for loss in self.val_losses]
         
@@ -222,9 +211,9 @@ class Trainer:
 
         sns.set_theme()
         sns.set_style("darkgrid")
-        sns.set_context("paper", font_scale=1.5)  # Increase font size
+        sns.set_context("paper", font_scale=1.5) 
 
-        plt.figure(figsize=(10, 6))  # Larger figure size
+        plt.figure(figsize=(10, 6))
         plt.plot(
             range(1, len(train_losses) + 1),
             train_losses,

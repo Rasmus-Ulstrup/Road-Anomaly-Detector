@@ -4,7 +4,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from torchvision.transforms.functional import to_pil_image
 import os
-from utils.tiles import split_image_into_tiles, combine_tiles_into_image_with_blending  # Ensure correct import paths
+from utils.tiles import split_image_into_tiles, combine_tiles_into_image_with_blending
 import numpy as np
 
 def load_model():
@@ -19,7 +19,7 @@ def run_inference(model, processor, image_path, prompts):
     image = Image.open(image_path).convert("RGB")
     image_inputs = processor.image_processor(images=image, return_tensors="pt", size=new_input_size)
 
-    # Repeat the image for each prompt
+    # Repeat the image
     batch_size = len(prompts)
     pixel_values = image_inputs["pixel_values"].repeat(batch_size, 1, 1, 1)
 
@@ -30,7 +30,7 @@ def run_inference(model, processor, image_path, prompts):
         truncation=True
     )
 
-    # Transfer model and inputs to GPU
+    # Transfer model and input to GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)  # Transfer model to GPU
     pixel_values = pixel_values.to(device)
@@ -49,19 +49,6 @@ def run_inference(model, processor, image_path, prompts):
     return outputs, image
 
 def run_inference_tiles(model, processor, image_path, working_dir, prompts, overlap=0):
-    """
-    Processes an image by splitting it into tiles, running inference on each tile,
-    saving the segmentation masks, and combining them into a final mask.
-
-    Args:
-        model: The pre-trained ClipSeg model.
-        processor: The ClipSeg processor for preprocessing.
-        image_path (str): Path to the input image.
-        prompts (list): List of text prompts for segmentation.
-
-    Returns:
-        str: Path to the combined segmentation mask.
-    """
     # Define directories
     tiles_dir = os.path.join(working_dir, 'images')
     masks_dir = os.path.join(working_dir, 'mask')
@@ -107,7 +94,6 @@ def run_inference_tiles(model, processor, image_path, working_dir, prompts, over
         binary_mask = (segmentation_mask > 0.55).float()
         binary_mask_np = binary_mask.cpu().numpy()
         
-        # Convert to PIL Image
         segmentation_image = to_pil_image(binary_mask_np)
         
         # Define the mask path
@@ -139,15 +125,13 @@ def visualize(image, outputs, prompts):
     segmentation_masks = outputs.logits  # Shape: (batch_size, height, width)
 
     # Choose a prompt index to visualize
-    index_to_visualize = 0  # Change this to visualize other prompts
+    index_to_visualize = 0 
     segmentation_mask = segmentation_masks[index_to_visualize]
 
     # Normalize and convert to an image
     segmentation_mask = segmentation_mask.sigmoid()  # Apply sigmoid to get probabilities
     segmentation_image = to_pil_image(segmentation_mask)
 
-    # Use the original image (before preprocessing) for RGB visualization
-    # Ensure you pass the original image
     original_image = image  # Assuming `image` is the PIL.Image object before processing
 
     # Display the original image and segmentation mask side by side
@@ -156,12 +140,12 @@ def visualize(image, outputs, prompts):
     # Display the original image
     ax[0].imshow(original_image)
     ax[0].set_title("Original Image")
-    ax[0].axis("on")  # Enable x and y axes
+    ax[0].axis("on")
 
     # Display the segmentation mask
     ax[1].imshow(segmentation_image, cmap="viridis")  # Use a color map for better visualization
     ax[1].set_title(f"Segmentation Mask for Prompt: {prompts[index_to_visualize]}")
-    ax[1].axis("on")  # Enable x and y axes
+    ax[1].axis("on")
 
     plt.tight_layout()
     plt.show()
@@ -176,7 +160,6 @@ if __name__=='__main__':
     # Run inference on tiles and get the combined mask path
     combined_mask_path = run_inference_tiles(model, processor, image_path, working_dir, prompts,overlap=256)
     
-    # Optionally, visualize the combined mask384
     # Load the original image and the combined mask
     with Image.open(image_path) as image:
         image = image.convert("RGB")

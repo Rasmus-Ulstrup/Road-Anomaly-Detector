@@ -15,6 +15,7 @@ def main():
     # Clear VRAM
     torch.cuda.empty_cache()
     
+    ##subparsers for different functionallity
     # Main parser
     parser = argparse.ArgumentParser(description="Road Anomaly Detection Framework")
     subparsers = parser.add_subparsers(dest="mode", required=True)
@@ -109,7 +110,7 @@ def main():
             patience=args.patience,
             alpha=args.alpha,
             gamma=args.gamma,
-            preprocessing=args.preprocessing,  # Add preprocessing to Config
+            preprocessing=args.preprocessing,
             Argumentation=args.argumentation
         )
         config.update_trainer_save_paths()
@@ -119,26 +120,26 @@ def main():
         
     elif args.mode == "inference":
         config = Config(model_name=args.model_name)
-        config.model.load_state_dict(torch.load(args.model_path, map_location=config.device))  # Ensure compatibility
+        config.model.load_state_dict(torch.load(args.model_path, map_location=config.device))
         run_inference(
             Config=config,
             model=config.model, 
             image_path=args.image_path, 
             device=config.device, 
             output_dir=args.output_dir,
-            preprocessing=args.preprocessing  # Pass preprocessing flag
+            preprocessing=args.preprocessing
         )
 
     elif args.mode == "inference_on_folder":
         config = Config(model_name=args.model_name, image_size=args.image_size)
-        config.model.load_state_dict(torch.load(args.model_path, map_location=config.device))  # Ensure compatibility
+        config.model.load_state_dict(torch.load(args.model_path, map_location=config.device))
         run_inference_on_folder(
             Config=config, 
             model=config.model, 
             folder_path=args.folder_path, 
             device=config.device, 
             output_dir=args.output_dir,
-            preprocessing=args.preprocessing  # Pass preprocessing flag
+            preprocessing=args.preprocessing
         )
 
     elif args.mode == "test":
@@ -146,18 +147,18 @@ def main():
             model_name=args.model_name,
             dataset_name=args.dataset_name,
             batch_size=args.batch_size,
-            preprocessing=args.preprocessing  # Add preprocessing to Config
+            preprocessing=args.preprocessing 
         )
         config.update_metric_save_path(args.model_path)
         _, _, test_loader = get_data_loaders(config, preprocessing=config.preprocessing)
         
-        config.model.load_state_dict(torch.load(args.model_path, map_location=config.device))  # Ensure compatibility
+        config.model.load_state_dict(torch.load(args.model_path, map_location=config.device))
         evaluate_model(config, config.model, test_loader, config.device)
 
     elif args.mode == 'tiles':
         config = Config(model_name=args.model_name, image_size=args.image_size, preprocessing=args.preprocessing)
         # Update model with loaded state_dict
-        config.model.load_state_dict(torch.load(args.model_path, map_location=config.device))  # Ensure compatibility
+        config.model.load_state_dict(torch.load(args.model_path, map_location=config.device)) 
 
         run_main_tiles(
             Config=config, 
@@ -169,11 +170,11 @@ def main():
             overlap=args.overlap,
             max_workers=args.max_workers,
             save_tiles=args.save_tiles,
-            preprocessing=args.preprocessing  # Pass preprocessing flag if applicable
+            preprocessing=args.preprocessing
         )
     elif args.mode=='tiles_test':
         config = Config(model_name=args.model_name, image_size=args.image_size, preprocessing=args.preprocessing)
-        config.model.load_state_dict(torch.load(args.model_path, map_location=config.device))  # Ensure compatibility
+        config.model.load_state_dict(torch.load(args.model_path, map_location=config.device))
         
         _=run_main_tiles_metrics(
             Config=config, 
@@ -185,7 +186,7 @@ def main():
             overlap=args.overlap,
             max_workers=args.max_workers,
             save_tiles=args.save_tiles,
-            preprocessing=args.preprocessing  # Pass preprocessing flag if applicable
+            preprocessing=args.preprocessing
         )
 
 

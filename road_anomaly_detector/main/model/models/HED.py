@@ -68,7 +68,7 @@ class HED(nn.Module):
         self.side4 = nn.Conv2d(1024, 1, kernel_size=1)
         self.side5 = nn.Conv2d(1024, 1, kernel_size=1)
         
-        # Merge layer
+        # Merge layer with sigmoid
         self.merge = nn.Conv2d(5, 1, kernel_size=1)
         self.final_activation = nn.Sigmoid()
     def forward(self, x):

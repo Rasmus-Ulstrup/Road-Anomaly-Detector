@@ -22,7 +22,7 @@ class unet(nn.Module):
         self.upconv2 = self._upconv_block(128, 64)
         self.decoder2 = self._conv_block(128, 64, pool=False)
         
-        # Final output layer
+        # Final output layer with sigmoid
         self.output_conv = nn.Conv2d(64, 1, kernel_size=(1, 1), stride=(1, 1))
         self.output_activation = nn.Sigmoid()
         
@@ -50,7 +50,7 @@ class unet(nn.Module):
         e4 = self.encoder4(e3)
         e5 = self.encoder5(e4)
         
-        # Decoder path with interpolation to ensure matching dimensions
+        # Decoder path 
         d5 = self.upconv5(e5)
         e4_resized = F.interpolate(e4, size=d5.shape[2:], mode='bilinear', align_corners=False)
         d5 = torch.cat((d5, e4_resized), dim=1)

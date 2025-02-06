@@ -6,14 +6,14 @@ class FPN(nn.Module):
     def __init__(self):
         super(FPN, self).__init__()
 
-        # Encoder (Bottom-up pathway)
+        # Encoder 
         self.encoder1 = self._conv_block(1, 64)
         self.encoder2 = self._conv_block(64, 128)
         self.encoder3 = self._conv_block(128, 256)
         self.encoder4 = self._conv_block(256, 512)
         self.encoder5 = self._conv_block(512, 1024, pool=False)  # No pooling for the last block
 
-        # Decoder (Top-down pathway)
+        # Decoder
         self.topdown4 = self._trans_conv_block(1024, 512)
         self.topdown3 = self._trans_conv_block(512, 256)
         self.topdown2 = self._trans_conv_block(256, 128)
@@ -25,13 +25,13 @@ class FPN(nn.Module):
         self.lateral3 = nn.Conv2d(256, 128, kernel_size=(1, 1))
         self.lateral2 = nn.Conv2d(128, 64, kernel_size=(1, 1))
 
-        # Final output layers (side-outputs for multi-scale predictions)
+        # Final output layers
         self.output4 = nn.Conv2d(512, 1, kernel_size=(1, 1))
         self.output3 = nn.Conv2d(256, 1, kernel_size=(1, 1))
         self.output2 = nn.Conv2d(128, 1, kernel_size=(1, 1))
         self.output1 = nn.Conv2d(64, 1, kernel_size=(1, 1))
 
-        # Merging step
+        # Merging step sigmoid
         self.merge = nn.Conv2d(4, 1, kernel_size=(1, 1))
         self.final_activation = nn.Sigmoid()
 

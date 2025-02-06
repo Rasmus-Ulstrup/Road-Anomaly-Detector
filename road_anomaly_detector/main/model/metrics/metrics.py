@@ -34,7 +34,7 @@ def compute_metrics(predictions, ground_truths):
     has_positive_pred = np.any(predictions == 1)
 
     if not has_positive_true and not has_positive_pred:
-        # No positive samples in both y_true and y_pred
+        # No positive samples in both y_true and y_pred (ensures high parameters when true negatives are calculated correctly on image with no cracks)
         correctness = 1.0
         completeness = 1.0
         quality = 1.0
@@ -45,22 +45,7 @@ def compute_metrics(predictions, ground_truths):
 
     return correctness, completeness, quality
 
-def compute_centerline_metrics(pred_mask, ref_mask, buffer_radius=2, visualize=True):
-    """
-    Compute centerline metrics between predicted and reference masks with optional visualization.
-
-    Parameters:
-    - pred_mask (numpy.ndarray): Predicted mask.
-    - ref_mask (numpy.ndarray): Reference mask.
-    - buffer_radius (int): Radius for dilation.
-    - visualize (bool): If True, display visualizations.
-
-    Returns:
-    - correctness (float): TP / (TP + FP)
-    - completeness (float): TP / (TP + FN)
-    - quality (float): TP / (TP + FP + FN)
-    """
-
+def compute_centerline_metrics(pred_mask, ref_mask, buffer_radius=2, visualize=True): #calculate quality, correctness and completeness
     # 1) Convert to binary uint8
     pred_bin = (pred_mask > 0.5).astype(np.uint8) * 255
     if pred_bin.ndim == 3:
@@ -81,12 +66,10 @@ def compute_centerline_metrics(pred_mask, ref_mask, buffer_radius=2, visualize=T
         plt.imshow(ref_bin, cmap='gray')
         plt.axis('off')
         plt.show()
-
-    # 2) Apply Zhang–Suen thinning (centerline extraction)
-    # Make sure cv2.ximgproc exists in your environment (opencv-contrib-python).
+    #make skelotanization
     pred_thin = cv2.ximgproc.thinning(pred_bin, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
     ref_thin  = cv2.ximgproc.thinning(ref_bin,  thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
-
+    #plots for debugging
     if visualize:
         plt.figure(figsize=(10, 5))
         plt.subplot(1, 2, 1)
@@ -100,26 +83,25 @@ def compute_centerline_metrics(pred_mask, ref_mask, buffer_radius=2, visualize=T
         plt.axis('off')
         plt.show()
 
-    # Count the total skeleton length (simply the number of nonzero “thin” pixels)
+    # Count the total skeleton length
     len_pred = np.count_nonzero(pred_thin)
     len_ref  = np.count_nonzero(ref_thin)
 
-    # Edge case: if both are empty, consider it a perfect match
+    # Edge case: if both are empty, it a perfect match
     if len_pred == 0 and len_ref == 0:
         if visualize:
             print("Both predicted and reference masks are empty. Perfect match.")
         return 1.0, 1.0, 1.0
 
-    # 3) Create a disk/ellipse structuring element for dilation
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2*buffer_radius + 1, 2*buffer_radius + 1))
 
-    # --- Step 1: Buffer around REF, see what portion of PRED is inside
+    # --- Step 1: Buffer around REF
     ref_dilated = cv2.dilate(ref_thin, kernel)
     matched_pred = (pred_thin > 0) & (ref_dilated > 0)
     TP_d = np.count_nonzero(matched_pred)
     FP_d = len_pred - TP_d
 
-    # --- Step 2: Buffer around PRED, see what portion of REF is inside
+    # --- Step 2: Buffer around PRED
     pred_dilated = cv2.dilate(pred_thin, kernel)
     matched_ref = (ref_thin > 0) & (pred_dilated > 0)
     matched_ref_len = np.count_nonzero(matched_ref)
@@ -134,7 +116,7 @@ def compute_centerline_metrics(pred_mask, ref_mask, buffer_radius=2, visualize=T
         overlay_pred[matched_pred] = [0, 255, 0]
 
         # False Positives: Red
-        overlay_pred[pred_thin > 0] &= 0  # Reset
+        overlay_pred[pred_thin > 0] &= 0
         overlay_pred[matched_pred] = [0, 255, 0]
         overlay_pred[pred_thin > 0] = [255, 0, 0]  # Red for all pred_thin
         overlay_pred[matched_pred] = [0, 255, 0]  # Override TP to green
@@ -160,8 +142,8 @@ def compute_centerline_metrics(pred_mask, ref_mask, buffer_radius=2, visualize=T
         plt.subplot(2, 3, 3)
         plt.title('Thinned Masks')
         combined_thin = np.zeros((*pred_bin.shape, 3), dtype=np.uint8)
-        combined_thin[..., 0] = pred_thin  # Red channel for pred_thin
-        combined_thin[..., 1] = ref_thin   # Green channel for ref_thin
+        combined_thin[..., 0] = pred_thin  # Red channel  pred_thin
+        combined_thin[..., 1] = ref_thin   # Green channel ref_thin
         plt.imshow(combined_thin)
         plt.axis('off')
         plt.legend(['Predicted Thin', 'Reference Thin'])
@@ -185,17 +167,13 @@ def compute_centerline_metrics(pred_mask, ref_mask, buffer_radius=2, visualize=T
 
         plt.tight_layout()
         plt.show()
-
-    # 4) Compute metrics
-    # correctness = TP_d / (TP_d + FP_d)
+    # compute final centerline metrics
     denom_correctness = (TP_d + FP_d)
     correctness = TP_d / denom_correctness if denom_correctness > 0 else 0.0
 
-    # completeness = TP_d / (TP_d + FN_d)
     denom_completeness = (TP_d + FN_d)
     completeness = TP_d / denom_completeness if denom_completeness > 0 else 0.0
 
-    # quality = TP_d / (TP_d + FP_d + FN_d)
     denom_quality = (TP_d + FP_d + FN_d)
     quality = TP_d / denom_quality if denom_quality > 0 else 0.0
 
@@ -249,41 +227,15 @@ def evaluate_model(Config, model, test_loader, device):
     with torch.no_grad():
         for i, (images, masks) in enumerate(test_loader):
             images, masks = images.to(device), masks.to(device)
-            # # Display the image and mask
-            # # Assuming batch size > 1, pick the first image and mask in the batch
-            # image = images[0].cpu().numpy().squeeze()  # Convert to numpy and remove extra dimensions
-            # mask = masks[0].cpu().numpy().squeeze()    # Convert to numpy and remove extra dimensions
-            
-            # # Plot the image and its corresponding mask
-            # plt.figure(figsize=(12, 6))
-            
-            # # Plot the image
-            # plt.subplot(1, 2, 1)
-            # plt.imshow(image, cmap="gray")
-            # plt.title("Image")
-            # plt.axis("off")
-            
-            # # Plot the mask
-            # plt.subplot(1, 2, 2)
-            # plt.imshow(mask, cmap="gray")
-            # plt.title("Mask")
-            # plt.axis("off")
-            
-            # Display the plot
-            # print("Press any key to close the plot and continue...")
-            # plt.show(block=True)
-            
-            outputs = model(images)  # Expecting a list
+     
+            outputs = model(images)
             if not isinstance(outputs, list):
                 final_outputs = (outputs.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
             else:
                 final_output = outputs[-1]
-                # Extract the final output
                 final_outputs = (final_output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
             masks = masks.cpu().numpy()
             print("done with inference")
-            # print(np.unique(mask))
-            # Accumulate batch metrics
             batch_correctness = []
             batch_completeness = []
             batch_quality = []
@@ -291,8 +243,7 @@ def evaluate_model(Config, model, test_loader, device):
             batch_recall = []
             batch_IoU = []
             batch_f1 = []
-            # batch_hd95 = []
-            
+            # batch_hd95 = [] #uncommented as it takes forever to calculate on large datasets            
             for pred, gt in zip(final_outputs, masks):
                 gt_binary = (gt > 0.5).astype(np.uint8)
                 precision, recall, IoU = compute_metrics(pred, gt_binary)
@@ -305,7 +256,6 @@ def evaluate_model(Config, model, test_loader, device):
                 batch_completeness.append(completeness)
                 batch_quality.append(quality)
                 batch_f1.append(f1_score(gt_binary.flatten(), pred.flatten()))
-                # batch_hd95.append(hausdorff_distance_95(pred, gt_binary))
 
             # Calculate the average for the batch
             batch_metrics["correctness"].append(np.mean(batch_correctness))
@@ -315,17 +265,6 @@ def evaluate_model(Config, model, test_loader, device):
             batch_metrics["recall"].append(np.mean(batch_recall))
             batch_metrics["IoU"].append(np.mean(batch_IoU))
             batch_metrics["f1"].append(np.mean(batch_f1))
-
-            # print("Current Batch Metrics:")
-            # print(f"Correctness: {np.mean(batch_correctness):.4f}")
-            # print(f"Completeness: {np.mean(batch_completeness):.4f}")
-            # print(f"Quality: {np.mean(batch_quality):.4f}")
-            # print(f"Precision: {np.mean(batch_precision):.4f}")
-            # print(f"Recall: {np.mean(batch_recall):.4f}")
-            # print(f"IoU: {np.mean(batch_IoU):.4f}")
-            # print(f"F1: {np.mean(batch_f1):.4f}")
-            # batch_metrics["hd95"].append(np.mean(batch_hd95))
-
             if i % max(1, total_batches // 10) == 0 or i == total_batches - 1:
                 print(f"Processed {i + 1}/{total_batches} batches "
                       f"({(i + 1) / total_batches * 100:.2f}%)")
@@ -333,7 +272,7 @@ def evaluate_model(Config, model, test_loader, device):
     # Write metrics to CSV
     with open(Config.metric_save_path, mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(["Metric", "Average"])  # Header row
+        writer.writerow(["Metric", "Average"])
 
         print("\nTest Set Metrics:")
         for metric, values in batch_metrics.items():
@@ -352,7 +291,7 @@ def run_inference(Config, model, image_path, device, output_dir="./outputs", pre
     transform = default_transform(Config)
 
     with torch.no_grad():
-        # 1) Load image (grayscale) with OpenCV
+        # 1) Load image with opencv
         image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
         if image is None:
             raise ValueError(f"Could not read image from {image_path}")
@@ -360,45 +299,39 @@ def run_inference(Config, model, image_path, device, output_dir="./outputs", pre
         if preprocessing==True:
             image = apply_preprocessing(image)
 
-        # 2) Apply Albumentations transform
-        # Albumentations expects a dict {"image": <numpy array>}
-        # which returns {"image": <torch.Tensor>}
+        # 2) Apply aalbumentations transform
         transformed = transform(image=image)
         input_tensor = transformed["image"].unsqueeze(0).to(device)
         input_tensor = input_tensor.float().to(device) / 255
 
         # 3) Perform inference
-        # output = model(input_tensor)
-        # output_mask = (output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
         #BEAR
-        outputs = model(input_tensor)  # Expecting a list
+        outputs = model(input_tensor)
         if not isinstance(outputs, list):
             output_mask = (outputs.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
         else:
             final_output = outputs[-1]
-            # Extract the final output
-            output_mask = (final_output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
+            output_mask = (final_output.squeeze().cpu().numpy() > 0.5).astype(np.uint8) # Extract final output from list (HED and FPN)
 
-        # 4) Resize the original image to match the predicted mask dimensions
-        #    (mask is [H, W], so shape is (height, width))
+        # 4) Resize the original image to match predicted dimensions
         resized_image = cv2.resize(
             image,
             (output_mask.shape[1], output_mask.shape[0]),
             interpolation=cv2.INTER_LANCZOS4
         )
 
-        # 5) Combine resized input image (left) and predicted mask (right)
+        # 5) Combine resized input imageand predicted mask to one image
         mask_array = output_mask * 255
         combined_image = np.hstack((resized_image, mask_array))
 
-        # 6) Save the combined image
+        # 6) Save combined image
         os.makedirs(output_dir, exist_ok=True)
         base_name = os.path.basename(image_path)
         combined_path = os.path.join(output_dir, f"combined_{base_name}")
         cv2.imwrite(combined_path, combined_image)
         print(f"Combined image saved to {combined_path}")
 
-        # 7) (Optional) Visualize using matplotlib
+        # 7) Visualize using matplotlib
         plt.figure(figsize=(12, 6))
         plt.title("Input Image and Predicted Mask")
         plt.imshow(combined_image, cmap="gray")
@@ -413,14 +346,13 @@ def run_inference_on_folder(Config, model, folder_path, device, output_dir="./ou
     transform = default_transform(Config)
     os.makedirs(output_dir, exist_ok=True)
 
-    # Loop over all files in the folder
+    # Loop over files in the folder
     for image_name in os.listdir(folder_path):
         image_path = os.path.join(folder_path, image_name)
 
-        # Optionally check the extension
         if image_name.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):
             with torch.no_grad():
-                # 1) Read image with OpenCV
+                # 1) Read image with opencv
                 image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
                 if image is None:
                     print(f"Skipping {image_path}, cannot read.")
@@ -435,25 +367,23 @@ def run_inference_on_folder(Config, model, folder_path, device, output_dir="./ou
                 input_tensor = input_tensor.float().to(device) / 255
 
                 # 3) Inference
-                # output = model(input_tensor)
-                # output_mask = (output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
+
                 #BEAR
-                outputs = model(input_tensor)  # Expecting a list
+                outputs = model(input_tensor)  
                 if not isinstance(outputs, list):
                     output_mask = (outputs.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
                 else:
                     final_output = outputs[-1]
-                    # Extract the final output
-                    output_mask = (final_output.squeeze().cpu().numpy() > 0.5).astype(np.uint8)
+                    output_mask = (final_output.squeeze().cpu().numpy() > 0.5).astype(np.uint8) # Extract final output from list (HED and FPN)
 
-                # 4) Resize the original image to match the predicted mask dimensions
+                # 4) Resize the original image to match the predicted dimensions
                 resized_image = cv2.resize(
                     image,
                     (output_mask.shape[1], output_mask.shape[0]),
                     interpolation=cv2.INTER_LANCZOS4
                 )
 
-                # 5) Combine them side by side
+                # 5) Combine 
                 mask_array = output_mask * 255
                 combined_image = np.hstack((resized_image, mask_array))
 
@@ -462,7 +392,7 @@ def run_inference_on_folder(Config, model, folder_path, device, output_dir="./ou
                 cv2.imwrite(combined_path, combined_image)
                 print(f"Combined image saved to {combined_path}")
 
-                # 7) (Optional) visualize
+                # 7) visualize
                 # plt.figure(figsize=(12, 6))
                 # plt.title(f"Input Image and Predicted Mask - {image_name}")
                 # plt.imshow(combined_image, cmap="gray")
@@ -483,17 +413,16 @@ def apply_preprocessing(image: np.ndarray) -> np.ndarray:
     if len(image.shape) != 2:
         raise ValueError("Input image must be a grayscale image with 2 dimensions.")
 
-    # Apply CLAHE (Contrast Limited Adaptive Histogram Equalization)
+    # Apply CLAHE 
     clahe = cv2.createCLAHE(clipLimit=45, tileGridSize=(10, 10))
     clahe_img = clahe.apply(image)
 
     # Apply Bilateral Filter
-    # Bilateral filtering preserves edges while smoothing
     bilateral_filtered = cv2.bilateralFilter(
         clahe_img, 
         d=20,            # Diameter of each pixel neighborhood
-        sigmaColor=26,   # Filter sigma in the color space
-        sigmaSpace=5     # Filter sigma in the coordinate space
+        sigmaColor=26,   
+        sigmaSpace=5     
     )
 
     return bilateral_filtered

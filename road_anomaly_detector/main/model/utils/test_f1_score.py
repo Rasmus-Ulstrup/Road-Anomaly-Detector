@@ -14,17 +14,17 @@ def calculate_f1_score(mask1, mask2, zero_division=1):
     Returns:
     - f1: F1 score as a float.
     """
-    # Load masks if they are file paths
+    # Load masks 
     if isinstance(mask1, str):
         mask1 = np.array(Image.open(mask1).convert("1"), dtype=np.uint8)
     if isinstance(mask2, str):
         mask2 = np.array(Image.open(mask2).convert("1"), dtype=np.uint8)
 
-    # Check if masks are the same shape
+    # Check mask shape
     if mask1.shape != mask2.shape:
         raise ValueError(f"Masks must have the same dimensions, but got {mask1.shape} and {mask2.shape}.")
 
-    # Flatten the masks
+    # Flatten masks
     mask1_flat = mask1.flatten()
     mask2_flat = mask2.flatten()
 
@@ -33,13 +33,11 @@ def calculate_f1_score(mask1, mask2, zero_division=1):
 
     return f1
 
-# Example usage
 if __name__ == "__main__":
-    # Replace with paths to your mask files or numpy arrays
+    #Simple test of F1 score
     mask1_path = "road_anomaly_detector/main/model/utils/vej_2_25_00004_mask.png"  # Path to ground truth mask
     mask2_path = "road_anomaly_detector/main/model/utils/vej_2_25_00004_image_combined_mask.png"    # Path to predicted mask
 
-    # Calculate and print F1 score
     try:
         f1 = calculate_f1_score(mask1_path, mask2_path)
         print(f"F1 Score: {f1:.4f}")

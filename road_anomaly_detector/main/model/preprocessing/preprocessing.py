@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 # Load the image
-image_path = "./preprocessing/Images/tile1.png"  # Replace with your image path
+image_path = "./preprocessing/Images/tile1.png" 
 image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 if image is None:
     print("Error: Image not found!")
@@ -13,24 +13,24 @@ if image is None:
 image = cv2.resize(image, (512, 512))
 cv2.imshow("Original (Resized)", image)
 
-# Parameters for Gabor filters
-ksize = 31  # Kernel size
-sigma = 2.0  # Gaussian sigma
-lambd = 10.0  # Wavelength of sinusoidal factor
-gamma = 1  # Spatial aspect ratio
-psi = 0  # Phase offset
+# Gabor filters
+ksize = 31 
+sigma = 2.0 
+lambd = 10.0 
+gamma = 1 
+psi = 0 
 
-# Define multiple orientations
+# multiple orientations
 orientations = [0, np.pi / 6, np.pi / 4, np.pi / 3, np.pi / 2, 2 * np.pi / 3]
 
-# Apply Gabor filters for each orientation and sum their responses
+# Gabor filters for each orientation
 gabor_sum = np.zeros_like(image, dtype=np.float32)  # Initialize the sum
 
 for theta in orientations:
     # Create Gabor kernel
     gabor_kernel = cv2.getGaborKernel((ksize, ksize), sigma, theta, lambd, gamma, psi, ktype=cv2.CV_32F)
     
-    # Filter the image using the Gabor kernel
+    # Filter image using the Gabor kernel
     filtered = cv2.filter2D(image, cv2.CV_32F, gabor_kernel)
     
     # Accumulate the absolute response
@@ -40,13 +40,11 @@ for theta in orientations:
 gabor_sum_normalized = cv2.normalize(gabor_sum, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
 
-#image = gabor_sum_normalized
-
 # Display the result
 cv2.imshow("Gabor Filtered (Summed Responses)", gabor_sum_normalized)
 
 
-# Global Histogram Equalization
+# Global Histogram
 # equalized = cv2.equalizeHist(image)
 # cv2.imshow("Global Histogram Equalization", equalized)
 

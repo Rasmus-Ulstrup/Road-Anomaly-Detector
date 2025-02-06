@@ -7,24 +7,22 @@ from datetime import datetime
 import csv
 
 def load_config(config_path):
-    """Load YAML configuration file."""
     with open(config_path, 'r') as file:
         config = yaml.safe_load(file)
     return config
 
 def create_timestamped_log_directory(parent_dir="logs"):
-    """Create a timestamped subdirectory under the parent logs directory."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_dir = os.path.join(parent_dir, timestamp)
     os.makedirs(log_dir, exist_ok=True)
     return log_dir
 
 def sanitize_learning_rate(lr):
-    """Remove the decimal point from the learning rate for filename purposes."""
+    #remove decimal to for storage purposes
     return str(lr).replace('.', '')
 
 def construct_model_save_path(config, model_name, dataset_name, loss_function):
-    """Construct the model save path based on the given naming convention."""
+    #make model save path with parameters included in the name
     learning_rate = config["learning_rate"]
     batch_size = config["batch_size"]
     patience = config["patience"]
@@ -44,7 +42,7 @@ def construct_model_save_path(config, model_name, dataset_name, loss_function):
     return model_save_path
 
 def construct_log_filename(action, config, loss_function):
-    """Construct a log filename based on the action (train/test) and configuration."""
+    #make a log file for each model 
     model_name = config["model_name"]
     dataset_name = config["dataset_name"]
     learning_rate = config["learning_rate"]
@@ -62,20 +60,19 @@ def construct_log_filename(action, config, loss_function):
     return log_filename
 
 def run_command(cmd, log_path):
-    """Run a subprocess command and log its output."""
     with open(log_path, "w") as log_file:
         process = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
         process.wait()
         return process.returncode, log_path
 
 def run_training(config, log_dir):
-    """Runs the training process with the given configuration."""
+    #run training with the parameters from config
     cmd = [
         "python", "main.py", "train",
         "--model_name", config["model_name"],
         "--dataset_name", config["dataset_name"],
         "--batch_size", str(config["batch_size"]),
-        "--image_size", str(config["image_size"]),  # Convert list to tuple string
+        "--image_size", str(config["image_size"]), 
         "--test_size", str(config["test_size"]),
         "--loss_function", config["loss_function"]["name"],
         "--learning_rate", str(config["learning_rate"]),
@@ -83,7 +80,7 @@ def run_training(config, log_dir):
         "--patience", str(config["patience"])
     ]
 
-    # Add alpha and gamma if they exist for the loss function
+    # Add alpha and gamma if used for the given loss function
     if config["loss_function"]["name"] in ["tversky", "focal"]:
         if "alpha" in config["loss_function"]:
             cmd.extend(["--alpha", str(config["loss_function"]["alpha"])])
@@ -108,21 +105,21 @@ def run_training(config, log_dir):
             print(f"Training failed for configuration: {config}. Check log: {log_path}")
 
 def run_testing(config, log_dir, model_save_path):
-    """Runs the testing process with the given configuration and model path."""
+    #run testing for every model to get their metrics (on test set)
     cmd = [
         "python", "main.py", "test",
         "--model_name", config["model_name"],
-        "--dataset_name", config["dataset_name"],  # Assuming test uses the same dataset; adjust if different
+        "--dataset_name", config["dataset_name"], 
         "--batch_size", str(config["batch_size"]),
         "--model_path", model_save_path
 
     ]
 
-    # **Add Preprocessing Flag if Enabled for Testing (Optional)**
+    # Add preprocessing Flag if enabled for testing
     if config.get("preprocessing", False):
         cmd.append("--preprocessing")
 
-    # Define log file name based on configuration
+    # define log file name based on configuration
     log_filename = construct_log_filename("test", config, config["loss_function"])
     log_path = os.path.join(log_dir, log_filename)
 
@@ -136,14 +133,14 @@ def run_testing(config, log_dir, model_save_path):
             print(f"Testing failed for configuration: {config}. Check log: {log_path}")
 
 def main_traning():
-    # Load the YAML configuration
+    #load configuration
     config = load_config("config.yaml")
 
     # Ensure logs directory exists and create a timestamped subdirectory
     log_dir = create_timestamped_log_directory("logs")
     print(f"Logs will be saved to: {log_dir}")
 
-    # Generate all combinations of datasets, models, and loss functions
+    # Generate combinations 
     datasets = config.get("datasets", {})
     models = config.get("models", [])
     loss_functions = config.get("loss_functions", [])
@@ -165,7 +162,7 @@ def main_traning():
     for dataset_name, dataset_params in datasets.items():
         for model_name in models:
             for loss_function in loss_functions:
-                # Prepare the configuration for this combination
+                # Prepare the configuration
                 combination_config = {
                     "dataset_name": dataset_name,
                     "model_name": model_name,
@@ -191,17 +188,17 @@ def main_traning():
                 model_dir = os.path.dirname(model_save_path)
                 os.makedirs(model_dir, exist_ok=True)
 
-                # Run the training
+                # Run training
                 run_training(combination_config, log_dir)
 
-                # After training, run the testing
+                # After training, run testing
                 if os.path.exists(model_save_path):
                     run_testing(combination_config, log_dir, model_save_path)
                 else:
                     print(f"Model file not found at {model_save_path}. Skipping testing for this configuration.")
 
 def run_testing_tiles(config, log_dir, model_path):
-    """Runs the tiles testing process with the given configuration."""
+    #Runs the tiles testing process with the given configuration
     cmd = [
         "python", "main.py", "tiles_test",
         "--model_name", config["model_name"],
@@ -209,7 +206,7 @@ def run_testing_tiles(config, log_dir, model_path):
         "--folder_path", config["folder_path"]
     ]
 
-    # Add preprocessing flag if specified in the configuration
+    # Add preprocessing flag if specified in configuration
     if config.get("preprocessing", False):
         cmd.append("--preprocessing")
 
@@ -217,22 +214,22 @@ def run_testing_tiles(config, log_dir, model_path):
     log_filename = construct_log_filename("tiles_test", config, config["loss_function"])
     log_path = os.path.join(log_dir, log_filename)
 
-    # Execute the command and log its output
+    # log output
     with open(log_path, "w") as log_file:
         print(f"Starting tiles testing: {config}")
         process = subprocess.Popen(cmd, stdout=log_file, stderr=subprocess.STDOUT)
         process.wait()  # Wait for the process to complete
 
-        # Check the result and provide feedback
+        # Check the result
         if process.returncode == 0:
             print(f"Tiles testing completed successfully: {config}")
         else:
             print(f"Tiles testing failed: {config}. Check log: {log_path}")
 
-    # Initialize a dictionary to store metrics
+    # Initialize dictionary to store metrics
     metrics = {}
 
-    # Search for all metrics!
+    # Search for all metrics
     with open(log_path, "r") as log_file:
         for line in log_file:
             # Check for each metric and extract the value
@@ -277,10 +274,10 @@ def run_testing_tiles(config, log_dir, model_path):
     return metrics
 
 def main_tiles_test(folder_path, model_path, preprocessing):
-    # Load the YAML configuration
+    # Load configuration
     config = load_config("config.yaml")
 
-    # Generate all combinations of datasets, models, and loss functions
+    # Generate combinations
     datasets = config.get("datasets", {})
     models = config.get("models", [])
     loss_functions = config.get("loss_functions", [])
@@ -297,7 +294,7 @@ def main_tiles_test(folder_path, model_path, preprocessing):
     
     os.makedirs("labeled_test", exist_ok=True)
 
-    # Prepare the CSV file
+    # Prepare CSV file
     full_path = os.path.expanduser(folder_path)
     folder_name = os.path.basename(os.path.normpath(full_path))
     csv_file = f"./labeled_test/metrics_{folder_name}_Pre-{preprocessing}.csv"
@@ -319,7 +316,7 @@ def main_tiles_test(folder_path, model_path, preprocessing):
         for dataset_name, dataset_params in datasets.items():
             for model_name in models:
                 for loss_function in loss_functions:
-                    # Prepare the configuration for this combination
+                    # Prepare the configuration
                     combination_config = {
                         "dataset_name": dataset_name,
                         "model_name": model_name,
@@ -334,7 +331,7 @@ def main_tiles_test(folder_path, model_path, preprocessing):
                         "folder_path": folder_path
                     }
 
-                    # Define the model save path based on the naming convention
+                    # Define the model save path
                     model_save_path = construct_model_save_path(
                         combination_config,
                         model_name,
@@ -351,10 +348,10 @@ def main_tiles_test(folder_path, model_path, preprocessing):
                     # Run testing and get metrics
                     metrics = run_testing_tiles(combination_config, log_dir, real_model_dir)
 
-                    # Convert keys to lowercase for consistency (optional)
+                    # Convert keys to lowercase
                     metrics = {k.lower(): v for k, v in metrics.items()}
 
-                    # Write the data row to the CSV, with a fallback if a key is missing
+                    # Write the data row to the CSV, with fallback if key is missing
                     if metrics:
                         writer.writerow([
                             real_model_name,
@@ -369,14 +366,14 @@ def main_tiles_test(folder_path, model_path, preprocessing):
                     print(f"Saved metrics for {real_model_name} to {csv_file}")
 
 def main_testing(model_path):
-    # Load the YAML configuration
+    # Load configuration
     config = load_config("config.yaml")
 
     # Ensure logs directory exists and create a timestamped subdirectory
     log_dir = create_timestamped_log_directory("logs")
     print(f"Logs will be saved to: {log_dir}")
 
-    # Generate all combinations of datasets, models, and loss functions
+    # Generate all combinations
     datasets = config.get("datasets", {})
     models = config.get("models", [])
     loss_functions = config.get("loss_functions", [])
@@ -398,7 +395,7 @@ def main_testing(model_path):
     for dataset_name, dataset_params in datasets.items():
         for model_name in models:
             for loss_function in loss_functions:
-                # Prepare the configuration for this combination
+                # Prepare the configuration
                 combination_config = {
                     "dataset_name": dataset_name,
                     "model_name": model_name,
@@ -412,7 +409,7 @@ def main_testing(model_path):
                     "preprocessing": dataset_params.get("preprocessing", config.get("global", {}).get("preprocessing", False))  # **Include Preprocessing Flag**
                 }
 
-                # Define the model save path based on the naming convention
+                # Define the model save path
                 model_save_path = construct_model_save_path(
                     combination_config,
                     model_name,
@@ -425,7 +422,7 @@ def main_testing(model_path):
                 real_model_name = model_dir.replace("model_files/", "")
                 real_model_dir = os.path.join(model_path, real_model_name, "model.pth")
                 print(real_model_dir)
-                # Run the testing
+                # Run testing
                 run_testing(combination_config, log_dir, real_model_dir)
 
                 # After training, run the testing

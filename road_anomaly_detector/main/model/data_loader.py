@@ -34,7 +34,7 @@ def calculate_mean_std(image_dir):
             img_path = os.path.join(image_dir, fname)
             img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
             if img is None:
-                continue  # Skip corrupted images
+                continue 
             img = img.astype(np.float32) / 255.0  # Normalize to [0,1]
             mean += img.mean()
             std += img.std()
@@ -62,7 +62,7 @@ class SegmentationDataset(Dataset):
 
     def __getitem__(self, idx):
         # Load image and mask using OpenCV
-        image_pre = cv2.imread(self.image_paths[idx], cv2.IMREAD_GRAYSCALE)  # Loads as BGR by default
+        image_pre = cv2.imread(self.image_paths[idx], cv2.IMREAD_GRAYSCALE)
         if image_pre is None:
             raise ValueError(f"Image not found or unable to read: {self.image_paths[idx]}")
         
@@ -71,8 +71,8 @@ class SegmentationDataset(Dataset):
         if mask is None:
             raise ValueError(f"Mask not found or unable to read: {self.mask_paths[idx]}")
         # Load images and masks
-        #image = Image.open(self.image_paths[idx]).convert("L")  # Convert to grayscale if required
-        #mask = Image.open(self.mask_paths[idx]).convert("L")    # Same for masks
+        #image = Image.open(self.image_paths[idx]).convert("L")  # Convert to grayscale 
+        #mask = Image.open(self.mask_paths[idx]).convert("L")
 
         if self.preprocessing == True:
             image_pre = apply_preprocessing(image_pre)
@@ -166,7 +166,7 @@ def get_data_loaders(Config, preprocessing=False):
     image_dir = datasets[Config.dataset_name]["image_dir"]
     mask_dir = datasets[Config.dataset_name]["mask_dir"]
 
-     # Load image and mask paths with common image extensions
+     # Load image and mask paths with compression types
     image_paths = sorted([
         os.path.join(image_dir, fname) 
         for fname in os.listdir(image_dir) 
@@ -188,15 +188,8 @@ def get_data_loaders(Config, preprocessing=False):
     )
 
     # Compute mean and std for normalization based on the training set
-    # train_image_dir = image_dir  # Ensure this points to the actual training images
     mean, std = calculate_mean_std(image_dir)
 
-    # Define transformations
-    # val_transform = A.Compose([
-    #     A.Resize(height=Config.image_size[0], width=Config.image_size[1]),
-    #     #A.Normalize(mean=(mean,), std=(std,)),
-    #     ToTensorV2()
-    # ])
     val_transform = default_transform(Config)
     if Config.argumentation == 1:
         print("Training with argumentation")
@@ -226,7 +219,7 @@ def get_data_loaders(Config, preprocessing=False):
         print("Training without argumentation")
         train_transform = val_transform
     
-    # Create datasets for train, val, and test
+    # Create datasets for train, val, and test (test has been changed to a seperate test folder see report)
     train_dataset = SegmentationDataset(train_images, train_masks, transform=train_transform, preprocessing=preprocessing)
     val_dataset = SegmentationDataset(val_images, val_masks, transform=val_transform, preprocessing=preprocessing)
 
@@ -247,8 +240,6 @@ def get_data_loaders(Config, preprocessing=False):
     if len(test_image_paths) != len(test_mask_paths):
         raise ValueError("The number of images and masks in testsetz do not match.")
     
-    
-    # print(f"length of test images: {len(test_image_paths)}")
 
     test_dataset = SegmentationDataset(test_image_paths, test_mask_paths, transform=val_transform, preprocessing=preprocessing)
 
