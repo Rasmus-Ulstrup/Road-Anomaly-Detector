@@ -6,8 +6,6 @@
 
 **Road Anomaly Detector** is a machine learning project aimed at identifying and detecting anomalies on roads using image processing techniques. This project is designed to assist in the automation of road maintenance by providing a reliable tool for identifying potholes, cracks, and other surface irregularities.
 
-## Features
-- test
 ## Installation
 
 1. **Clone the repository**:
@@ -23,6 +21,8 @@
 4. **Download and install pylon**:
    ```bash
    https://www2.baslerweb.com/en/downloads/software-downloads/software-pylon-7-5-0-windows/
+
+
 
 ## License
 This project is licensed under the MIT License.
