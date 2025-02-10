@@ -5,35 +5,30 @@ from road_anomaly_detector.main.calibration.Encoder.camera import camProbities
 from road_anomaly_detector.main.camera.Image_acqusition import LineScanCamera
 
 def load_image(filepath):
-    """Load an image in grayscale mode."""
     image = cv2.imread(filepath, cv2.IMREAD_GRAYSCALE)
     if image is None:
         raise FileNotFoundError(f"Error: Unable to load image from {filepath}")
     return image
 
 def display_image(image, title="Image"):
-    """Display an image using Matplotlib."""
     plt.imshow(image, cmap='gray')
     plt.title(title)
     plt.axis('off')
     plt.show()
 
 def save_image(image, save_path):
-    """Save an image to the specified path."""
     success = cv2.imwrite(save_path, image)
     if not success:
         raise IOError(f"Error: Unable to save image to {save_path}")
     print(f"Image saved successfully at {save_path}")
 
 def save_image(image, save_path):
-    """Save an image to the specified path."""
     success = cv2.imwrite(save_path, image)
     if not success:
         raise IOError(f"Error: Unable to save image to {save_path}")
     print(f"Image saved successfully at {save_path}")
 
 def find_paper_contour(image, lower=170, upper=255, blurEn=True, morphEn=True):
-    """Detect paper contour in the image using thresholding and morphological operations."""
     if blurEn:
         image = cv2.GaussianBlur(image, (3, 3), 0)
 
@@ -57,7 +52,6 @@ def find_paper_contour(image, lower=170, upper=255, blurEn=True, morphEn=True):
     return big_contour, thresh, morph, contours
 
 def calculate_dimensions_from_contour(image, contour):
-    """Approximate a contour to a polygon and calculate its dimensions."""
     peri = cv2.arcLength(contour, True)
     corners = cv2.approxPolyDP(contour, 0.04 * peri, True)
 
@@ -79,7 +73,6 @@ def calculate_dimensions_from_contour(image, contour):
     return np.round(height_px), np.round(width_px), polygon
 
 def display_stages(image, thresh, morph, contours, polygon):
-    """Display the thresh, morph, contours, and polygon stages in one figure."""
     fig, axes = plt.subplots(2, 2, figsize=(10, 10))
     
     # Display thresholded image
@@ -108,7 +101,6 @@ def display_stages(image, thresh, morph, contours, polygon):
     plt.show()
 
 def paper_size(image, lower=170, upper=255, dispay=True, blurEn=True, morphEn=True):
-    """Find and return paper size (height and width in pixels) and polygon representation."""
     contour, thresh, morph, contours = find_paper_contour(image, lower, upper, blurEn, morphEn)
     height_px, width_px, polygon = calculate_dimensions_from_contour(image, contour)
     if dispay:

@@ -15,16 +15,6 @@ from albumentations.pytorch import ToTensorV2
 from metrics.metrics import apply_preprocessing
 
 def calculate_mean_std(image_dir):
-    """
-    Calculate the mean and standard deviation of greyscale images in a directory.
-
-    Args:
-        image_dir (str): Path to the directory containing images.
-
-    Returns:
-        mean (float): Mean of the dataset.
-        std (float): Standard deviation of the dataset.
-    """
     mean = 0.0
     std = 0.0
     count = 0
@@ -46,12 +36,6 @@ def calculate_mean_std(image_dir):
 
 class SegmentationDataset(Dataset):
     def __init__(self, image_paths, mask_paths, transform=None, preprocessing=False):
-        """
-        Args:
-            image_paths (list): List of image file paths.
-            mask_paths (list): List of mask file paths.
-            transform (callable, optional): Optional transform to be applied on a sample.
-        """
         self.image_paths = image_paths
         self.mask_paths = mask_paths
         self.transform = transform
@@ -108,17 +92,6 @@ class SegmentationDataset(Dataset):
 
 
 def get_data_loaders(Config, preprocessing=False):
-    """
-    Args:
-        dataset_name (str): The name of the dataset to load (e.g., 'cracktree200', 'forest', 'gaps384', 'cfd', 'mixed').
-        batch_size (int): Batch size for the data loaders.
-        image_size (tuple): Desired image size for resizing (default is 448x320).
-        test_size (float): Proportion of the data to be used for validation (default is 0.2).
-        random_state (int): Seed for reproducibility during data splitting.
-
-    Returns:
-        train_loader, val_loader: DataLoaders for training and validation.
-    """
     # Define the dataset directories
     datasets = {
         "cracktree200": {

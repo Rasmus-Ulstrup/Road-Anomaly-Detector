@@ -2,17 +2,10 @@ import os
 from PIL import Image
 
 def stitch_images_from_directory(target_dir, output_dir):
-    """
-    Stitches all images in the target directory that share the same name (excluding incrementing parts).
 
-    Args:
-        target_dir (str): Path to the target directory containing the images.
-        output_dir (str): Path to the directory to save stitched images.
-    """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Group images by their base name
     grouped_images = {}
     for file in sorted(os.listdir(target_dir)):
         if file.endswith(".png"):
@@ -20,8 +13,6 @@ def stitch_images_from_directory(target_dir, output_dir):
             if base_name not in grouped_images:
                 grouped_images[base_name] = []
             grouped_images[base_name].append(os.path.join(target_dir, file))
-
-    # Stitch images for each base name
     for base_name, image_paths in grouped_images.items():
         stitched_image = None
         for img_path in image_paths:

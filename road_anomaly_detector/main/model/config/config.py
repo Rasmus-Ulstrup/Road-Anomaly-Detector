@@ -9,15 +9,6 @@ import re
 import segmentation_models_pytorch as smp
 
 def sanitize_learning_rate(lr):
-    """
-    Converts the learning rate to a string without the decimal point.
-    
-    Args:
-        lr (float): Learning rate value.
-        
-    Returns:
-        str: Sanitized learning rate.
-    """
     return str(lr).replace('.', '')
 
 class Config:
@@ -79,12 +70,6 @@ class Config:
 
     
     def _get_loss_suffix(self):
-        """
-        Generates a suffix for the loss function based on its type and parameters.
-
-        Returns:
-            str: Loss suffix string.
-        """
         if self.loss_function in ["tversky", "focal"]:
             alpha = self.loss_kwargs.get('alpha', 0.25)
             gamma = self.loss_kwargs.get('gamma', 2)

@@ -98,7 +98,7 @@ if __name__ == '__main__':
     # Create subplots
     fig, axes = plt.subplots(1, 2, figsize=(15, 5))
 
-    # First subplot: Image with overlayed interpolated points
+    # First subplot
     ax_image = axes[0]
     ax_image.imshow(image, cmap='gray')
     ax_image.scatter(x_cross, y_positions, color='lime', s=20, label="Interpolated Points")  # Overlay points
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     ax_image.set_title('Image with Overlayed Interpolated Points')
     ax_image.axis('off')
 
-    # Second subplot: Plot of distances
+    # Second subplot
     ax_distances = axes[1]
     ax_distances.plot(distances, color='red', marker='o', linestyle='dashed', linewidth=1, label="Distances")
     ax_distances.set_title("Distances Plot")

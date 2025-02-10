@@ -4,19 +4,19 @@ const int encoderPinB = 3;
 const int lineRatePinA = 8;  
 const int lineRatePinB = 9;
 // Constants
-const int Resolution_H = 2048;    // Horizontal resolution in pixels
-const float Pixel_size = 7;     // Pixel size in micrometers (µm)
-const float Focal = 8.5;          // Focal length in millimeters (mm)
-const float defaultWD = 0.915;      // Default working distance in meters
+const int Resolution_H = 2048;    // 
+const float Pixel_size = 7;     // P
+const float Focal = 8.5;          // 
+const float defaultWD = 0.915;      // D
 
 // Function prototype
 float calculateSpatialResolution(float WD);
-void updateEncoder();// Variables to store calculated values
-float WD;                         // Working distance in meters, input from user
-float pixelSize_mm;               // Pixel size in millimeters
-float sensorWidth_mm;             // Sensor width in millimeters
-float fieldOfView;                // Field of view in millimeters
-float spatialResolution;          // Spatial resolution in meters per pixel
+void updateEncoder();//
+float WD;                         // 
+float pixelSize_mm;               //
+float sensorWidth_mm;             //
+float fieldOfView;                // 
+float spatialResolution;          // 
 
 volatile int16_t encoderTicks = 0;
 static int16_t encoderThreshold = 4*2;
@@ -25,7 +25,7 @@ int16_t encoderAll = 0;
 
 unsigned long lastTriggerTime_light = 0;
 unsigned long lastTriggerTime_camera = 0;
-const unsigned long pulseDurationMicros = 120;  // 10 microseconds for the pulse
+const unsigned long pulseDurationMicros = 120;  //
 
 void setup() {
   DDRB |= (1<<PB0) | (1<<PB1);
@@ -36,7 +36,7 @@ void setup() {
   float WD = 0.0;
   bool inputReceived = false;
 
-  // Wait for input or timeout after 30 seconds (30000 milliseconds)
+  // Wait for input or timeout after 30 seco
   while (millis() - startTime < 100) {
     if (Serial.available() > 0) {
       WD = Serial.parseFloat();
