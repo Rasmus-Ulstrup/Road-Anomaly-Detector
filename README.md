@@ -4,7 +4,7 @@
     <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
 </a>
 
-**Road Anomaly Detector** is a machine learning project aimed at identifying and detecting anomalies on roads using image processing techniques. This project is designed to assist in the automation of road maintenance by providing a reliable tool for identifying potholes, cracks, and other surface irregularities.
+**Road Anomaly Detector** is a machine learning project aimed at identifying and detecting anomalies on roads using image processing techniques. This project is designed to assist in the automation of road maintenance by providing a reliable tool for identifying potholes, cracks, and other surface irregularities. The project was done as a thesis at DTU by Rasmus Ulstrup and Bjørn Sejer.
 
 ## Installation
 
